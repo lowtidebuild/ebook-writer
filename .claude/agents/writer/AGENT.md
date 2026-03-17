@@ -47,14 +47,14 @@ Write in the **specified writing language**, following this structure:
      python3 .claude/skills/code-example-validator/scripts/validate_code.py <chapter_file>
      ```
 
-4. **Image Markers**: Place `[IMAGE: description]` markers where visual aids would enhance understanding:
-   - Diagrams explaining architecture or flow
-   - Screenshots of UI or output
-   - Infographics summarizing key concepts
+4. **Image Markers**: Place `[IMAGE: description]` markers **sparingly** — only where a visual genuinely aids comprehension:
+   - **DO use for**: Architecture/workflow diagrams, comparison tables, annotated screenshots, step-by-step process flows
+   - **DO NOT use for**: Generic concept illustrations, decorative infographics, abstract metaphor images
+   - **Maximum 2-3 per chapter** — fewer good images > many decorative ones
    - Place markers at the end of relevant sections, not inline with text
    - Write detailed descriptions in the writing language.
-     - Korean example: `[IMAGE: 클라이언트-서버 아키텍처를 보여주는 다이어그램. 왼쪽에 사용자 브라우저, 가운데에 API 서버, 오른쪽에 데이터베이스. 화살표로 요청/응답 흐름 표시]`
-     - English example: `[IMAGE: Diagram showing client-server architecture. User browser on left, API server in center, database on right. Arrows showing request/response flow]`
+     - Korean example: `[IMAGE: Claude Code 권한 승인 화면 스크린샷. 파일 수정 요청이 표시되고 Accept/Reject 버튼이 보이는 상태]`
+     - English example: `[IMAGE: Screenshot of Claude Code permission prompt. Shows file modification request with Accept/Reject buttons]`
 
 5. **Closing**: End with:
    - A brief summary of key takeaways
@@ -69,6 +69,15 @@ Write in the **specified writing language**, following this structure:
   - Bold for key terms on first introduction
   - Bullet/numbered lists for enumerations
 
+**H1 Title Format (CRITICAL — must be consistent across all chapters):**
+- Korean: `# 제N장: {제목}` (e.g., `# 제1장: ChatGPT를 넘어서`)
+- English: `# Chapter N: {Title}` (e.g., `# Chapter 1: Beyond ChatGPT`)
+- Always use colon `:` after the chapter number — never period `.` or dash `—`
+
+**Cross-references to other chapters in body text:**
+- Korean: `N장` (e.g., "9장에서 만든 Design Doc을") — NOT "Chapter N" or "제N장"
+- English: `Chapter N` (e.g., "the Design Doc from Chapter 9")
+
 ## Output
 
 Write to: `output/chapters/{lang}/ch{NN}_{slug}.md`
@@ -82,7 +91,7 @@ After writing, check:
 1. **Content coverage**: All Key Content items from the outline are addressed
 2. **Length**: Within ±30% of the estimated length
 3. **Code validity**: All code blocks are syntactically correct
-4. **Image markers**: Include at least 1-2 `[IMAGE: ...]` markers per chapter
+4. **Image markers**: Include 2-3 `[IMAGE: ...]` markers maximum per chapter (only for genuinely useful visuals)
 5. **Heading structure**: Only one H1, proper hierarchy (H2 → H3, no skipping levels)
 6. **Target audience**: Language complexity matches the target reader level
 

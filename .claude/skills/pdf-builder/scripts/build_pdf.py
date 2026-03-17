@@ -3,8 +3,12 @@
 build_pdf.py -- Convert markdown chapters into a typeset PDF book.
 
 Uses the python `markdown` library to convert each chapter to HTML,
-assembles them with a cover page and table of contents, applies a CSS
-stylesheet, and renders the result to PDF via WeasyPrint.
+assembles them with a cover page, title page, copyright page, and
+table of contents, applies a CSS stylesheet, and renders the result
+to PDF via WeasyPrint.
+
+Produces professional Korean book-grade typesetting with proper
+chapter openings, running headers, and B5 page format.
 """
 
 import argparse
@@ -127,29 +131,107 @@ def resolve_image_paths(html: str, images_dir: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Chapter HTML wrapping with proper book structure
+# ---------------------------------------------------------------------------
+
+H1_RE = re.compile(r"<h1\b[^>]*>(.*?)</h1>", re.IGNORECASE | re.DOTALL)
+H2_RE = re.compile(r"<h2\b[^>]*>(.*?)</h2>", re.IGNORECASE | re.DOTALL)
+TAG_STRIP_RE = re.compile(r"<[^>]+>")
+
+
+def wrap_chapter(chapter_html: str, chapter_num: int) -> str:
+    """Wrap a chapter HTML fragment with proper book chapter-opening structure.
+
+    Extracts the H1 title from the chapter body, creates a structured
+    chapter opening with chapter number, title, and decorative rule,
+    then appends the remaining body content.
+
+    Also adds id attributes to H2 elements for TOC linking.
+    """
+    # Extract H1 title
+    h1_match = H1_RE.search(chapter_html)
+    if h1_match:
+        title_html = h1_match.group(1).strip()
+        title_text = TAG_STRIP_RE.sub("", title_html).strip()
+        # Remove the H1 from the body
+        body_html = chapter_html[:h1_match.start()] + chapter_html[h1_match.end():]
+    else:
+        title_text = f"Chapter {chapter_num}"
+        body_html = chapter_html
+
+    # Add id attributes to H2 elements for TOC linking
+    section_counter = 0
+
+    def _add_h2_id(match: re.Match) -> str:
+        nonlocal section_counter
+        section_counter += 1
+        tag_content = match.group(0)
+        # Check if id already exists
+        if 'id="' in tag_content or "id='" in tag_content:
+            return tag_content
+        return tag_content.replace("<h2", f'<h2 id="ch{chapter_num}-s{section_counter}"', 1)
+
+    body_html = re.sub(r"<h2\b[^>]*>", _add_h2_id, body_html)
+
+    # Clean up leading whitespace in body
+    body_html = body_html.strip()
+
+    return (
+        f'<section class="chapter" id="ch{chapter_num}">\n'
+        f'  <div class="chapter-opening">\n'
+        f'    <span class="chapter-number">Chapter {chapter_num}</span>\n'
+        f'    <h1 class="chapter-title">{title_text}</h1>\n'
+        f'    <div class="chapter-rule"></div>\n'
+        f'  </div>\n'
+        f'  {body_html}\n'
+        f'</section>'
+    )
+
+
+# ---------------------------------------------------------------------------
 # Table of contents generation
 # ---------------------------------------------------------------------------
 
 HEADING_RE = re.compile(r"<(h[12])\b[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
-TAG_STRIP_RE = re.compile(r"<[^>]+>")
 
 
-def generate_toc(chapter_htmls: list[str]) -> str:
-    """Build an HTML table-of-contents section from chapter headings."""
+def generate_toc(chapter_htmls: list[str], chapter_nums: list[int]) -> str:
+    """Build an HTML table-of-contents section from chapter headings.
+
+    Uses anchor links and target-counter for page numbers via CSS.
+    """
     items: list[str] = []
-    for html_fragment in chapter_htmls:
+    for idx, html_fragment in enumerate(chapter_htmls):
+        chapter_num = chapter_nums[idx]
+        section_counter = 0
         for m in HEADING_RE.finditer(html_fragment):
             level = m.group(1).lower()
             text = TAG_STRIP_RE.sub("", m.group(2)).strip()
-            css_class = "toc-h1" if level == "h1" else "toc-h2"
-            items.append(f'<li class="{css_class}">{text}</li>')
+
+            if level == "h1":
+                items.append(
+                    f'<li class="toc-chapter">'
+                    f'<a href="#ch{chapter_num}">'
+                    f'{text}'
+                    f'<span class="toc-page-num"></span>'
+                    f'</a></li>'
+                )
+            elif level == "h2":
+                section_counter += 1
+                items.append(
+                    f'<li class="toc-section">'
+                    f'<a href="#ch{chapter_num}-s{section_counter}">'
+                    f'{text}'
+                    f'<span class="toc-page-num"></span>'
+                    f'</a></li>'
+                )
 
     if not items:
         return ""
 
     toc_html = (
         '<div class="toc-page">\n'
-        "<h1>Table of Contents</h1>\n"
+        '<h1>Table of Contents</h1>\n'
         '<ul class="toc-list">\n'
         + "\n".join(items)
         + "\n</ul>\n</div>\n"
@@ -189,15 +271,54 @@ def render_cover(
 
 def _default_cover_html() -> str:
     return """\
-<div class="cover-page">
-  <div class="cover-content">
-    <h1 class="cover-title">{{TITLE}}</h1>
-    <p class="cover-subtitle">{{SUBTITLE}}</p>
-    <p class="cover-author">{{AUTHOR}}</p>
-    <p class="cover-date">{{DATE}}</p>
+<section class="cover">
+  <div class="cover-page">
+    <div class="cover-content">
+      <h1 class="cover-title">{{TITLE}}</h1>
+      <p class="cover-subtitle">{{SUBTITLE}}</p>
+      <div class="cover-divider"></div>
+      <p class="cover-author">{{AUTHOR}}</p>
+      <p class="cover-date">{{DATE}}</p>
+    </div>
   </div>
-</div>
+</section>
 """
+
+
+# ---------------------------------------------------------------------------
+# Title page
+# ---------------------------------------------------------------------------
+
+def render_title_page(title: str, subtitle: str, author: str) -> str:
+    """Return the title page HTML."""
+    subtitle_html = f'<p class="subtitle">{subtitle}</p>' if subtitle else ""
+    return (
+        '<section class="title-page">\n'
+        '  <div class="title-page-content">\n'
+        f'    <h1>{title}</h1>\n'
+        f'    {subtitle_html}\n'
+        f'    <p class="author">{author}</p>\n'
+        '  </div>\n'
+        '</section>\n'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Copyright page
+# ---------------------------------------------------------------------------
+
+def render_copyright_page(author: str, date_str: str) -> str:
+    """Return the copyright page HTML."""
+    year = date_str[:4] if len(date_str) >= 4 else str(datetime.now().year)
+    return (
+        '<section class="copyright-page">\n'
+        '  <div class="copyright-content">\n'
+        f'    <p>&copy; {year} {author}. All rights reserved.</p>\n'
+        f'    <p>Generated by Ebook Writer Agent</p>\n'
+        f'    <p>{date_str}</p>\n'
+        '  </div>\n'
+        '</section>\n'
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -206,16 +327,19 @@ def _default_cover_html() -> str:
 
 def assemble_document(
     cover_html: str,
+    title_page_html: str,
+    copyright_page_html: str,
     toc_html: str,
-    chapter_htmls: list[str],
+    chapter_sections: list[str],
     css_text: str,
     title: str,
     language: str,
 ) -> str:
     """Combine all parts into a single self-contained HTML document."""
-    chapters_combined = "\n".join(
-        f'<section class="chapter">\n{ch}\n</section>' for ch in chapter_htmls
-    )
+    chapters_combined = "\n".join(chapter_sections)
+
+    # Hidden element to provide book title for running headers via string-set
+    book_title_meta = f'<span class="book-title-meta" style="display:none">{title}</span>'
 
     html = f"""\
 <!DOCTYPE html>
@@ -228,7 +352,10 @@ def assemble_document(
 </style>
 </head>
 <body>
+{book_title_meta}
 {cover_html}
+{title_page_html}
+{copyright_page_html}
 {toc_html}
 {chapters_combined}
 </body>
@@ -340,10 +467,24 @@ def main(argv: list[str] | None = None) -> None:
         resolve_image_paths(h, args.images) for h in chapter_htmls
     ]
 
-    # 4. Generate table of contents.
-    toc_html = generate_toc(chapter_htmls)
+    # 4. Determine chapter numbers from filenames.
+    chapter_nums: list[int] = []
+    for cp in chapter_paths:
+        m = CHAPTER_PATTERN.match(cp.name)
+        if m:
+            chapter_nums.append(int(m.group(1)))
+        else:
+            chapter_nums.append(len(chapter_nums) + 1)
 
-    # 5. Render cover page.
+    # 5. Generate table of contents (before wrapping, so we can read raw H1/H2).
+    toc_html = generate_toc(chapter_htmls, chapter_nums)
+
+    # 6. Wrap each chapter with proper book structure.
+    chapter_sections: list[str] = []
+    for idx, ch_html in enumerate(chapter_htmls):
+        chapter_sections.append(wrap_chapter(ch_html, chapter_nums[idx]))
+
+    # 7. Render cover page.
     date_str = datetime.now().strftime("%Y-%m-%d")
     cover_html = render_cover(
         template_path=args.cover,
@@ -353,7 +494,20 @@ def main(argv: list[str] | None = None) -> None:
         date_str=date_str,
     )
 
-    # 6. Load CSS.
+    # 8. Render title page.
+    title_page_html = render_title_page(
+        title=args.title,
+        subtitle=args.subtitle,
+        author=args.author,
+    )
+
+    # 9. Render copyright page.
+    copyright_page_html = render_copyright_page(
+        author=args.author,
+        date_str=date_str,
+    )
+
+    # 10. Load CSS.
     css_text = ""
     if args.styles and os.path.isfile(args.styles):
         css_text = Path(args.styles).read_text(encoding="utf-8")
@@ -361,20 +515,22 @@ def main(argv: list[str] | None = None) -> None:
     elif args.styles:
         print(f"WARNING: Stylesheet not found at {args.styles}, using defaults.")
 
-    # 7. Assemble full HTML document.
+    # 11. Assemble full HTML document.
     full_html = assemble_document(
         cover_html=cover_html,
+        title_page_html=title_page_html,
+        copyright_page_html=copyright_page_html,
         toc_html=toc_html,
-        chapter_htmls=chapter_htmls,
+        chapter_sections=chapter_sections,
         css_text=css_text,
         title=args.title,
         language=args.language,
     )
 
-    # 8. Determine base_url for WeasyPrint (for resolving relative resources).
+    # 12. Determine base_url for WeasyPrint (for resolving relative resources).
     base_url = str(Path(args.chapters).resolve())
 
-    # 9. Render to PDF.
+    # 13. Render to PDF.
     print("Rendering PDF...")
     render_pdf(full_html, args.output, base_url=base_url)
 

@@ -2,6 +2,8 @@
 """
 generate_images.py - Generate images for pending manifest entries via Google Gemini API.
 
+Uses the new google-genai SDK with GenerativeModel multimodal output.
+
 Usage:
     python3 generate_images.py <manifest_json_path>
 
@@ -10,7 +12,9 @@ Example:
 
 Environment variables:
     GEMINI_API_KEY  (required) - Google Gemini API key
-    IMAGE_MODEL     (optional) - Model name, defaults to "imagen-3.0-generate-002"
+    IMAGE_MODEL     (optional) - Model name, defaults to "gemini-3.1-flash-image-preview"
+
+Alternatively, reads from .env file in project root if environment variables are not set.
 """
 
 import json
@@ -18,6 +22,21 @@ import os
 import sys
 import time
 from pathlib import Path
+
+
+def load_env():
+    """Load environment variables from .env file if it exists."""
+    env_path = Path(__file__).resolve().parents[4] / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, value = line.partition("=")
+                    key = key.strip()
+                    value = value.strip().strip("'\"")
+                    if key and key not in os.environ:
+                        os.environ[key] = value
 
 
 def load_manifest(manifest_path: str) -> list[dict]:
@@ -31,34 +50,32 @@ def save_manifest(manifest: list[dict], manifest_path: str) -> None:
 
 
 def generate_images(manifest_path: str) -> None:
-    # ------------------------------------------------------------------
+    # Load .env if needed
+    load_env()
+
     # Validate API key
-    # ------------------------------------------------------------------
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("Error: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
+        print("Error: GEMINI_API_KEY not set (check environment or .env file).", file=sys.stderr)
         sys.exit(1)
 
-    model_name = os.environ.get("IMAGE_MODEL", "imagen-3.0-generate-002")
+    model_name = os.environ.get("IMAGE_MODEL", "gemini-3.1-flash-image-preview")
 
-    # ------------------------------------------------------------------
-    # Import the Gemini client library
-    # ------------------------------------------------------------------
+    # Import the new Gemini client
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
     except ImportError:
         print(
-            "Error: google-generativeai package is not installed. "
-            "Install it with: pip install google-generativeai",
+            "Error: google-genai package is not installed. "
+            "Install it with: pip install google-genai",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
-    # ------------------------------------------------------------------
     # Load manifest
-    # ------------------------------------------------------------------
     manifest = load_manifest(manifest_path)
 
     pending = [entry for entry in manifest if entry["status"] == "pending" and entry.get("prompt")]
@@ -66,16 +83,7 @@ def generate_images(manifest_path: str) -> None:
         print("No pending entries with prompts found. Nothing to generate.")
         return
 
-    print(f"Found {len(pending)} pending entry/entries to generate with model '{model_name}'.")
-
-    # ------------------------------------------------------------------
-    # Obtain the image generation model
-    # ------------------------------------------------------------------
-    try:
-        imagen_model = genai.ImageGenerationModel(model_name)
-    except Exception as exc:
-        print(f"Error: failed to load model '{model_name}': {exc}", file=sys.stderr)
-        sys.exit(1)
+    print(f"Found {len(pending)} pending image(s) to generate with model '{model_name}'.")
 
     completed_count = 0
     failed_count = 0
@@ -92,34 +100,31 @@ def generate_images(manifest_path: str) -> None:
             # Ensure output directory exists
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-            # Call the Gemini image generation API
-            result = imagen_model.generate_images(
-                prompt=prompt,
-                number_of_images=1,
-                safety_filter_level="block_only_high",
-                aspect_ratio="16:9",
+            # Call Gemini with multimodal image output
+            response = client.models.generate_content(
+                model=model_name,
+                contents=f"Generate an image: {prompt}",
+                config=types.GenerateContentConfig(
+                    response_modalities=["TEXT", "IMAGE"]
+                ),
             )
 
-            if not result.images:
-                raise RuntimeError("API returned no images.")
+            # Extract image from response
+            image_saved = False
+            for part in response.candidates[0].content.parts:
+                if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                    with open(output_path, "wb") as f:
+                        f.write(part.inline_data.data)
+                    image_saved = True
+                    break
 
-            # Save the first generated image
-            image = result.images[0]
-
-            # google.generativeai Image objects expose _pil_image or
-            # a save() helper depending on the SDK version.
-            if hasattr(image, "save"):
-                image.save(output_path)
-            elif hasattr(image, "_pil_image"):
-                image._pil_image.save(output_path)
-            else:
-                # Fallback: attempt to write raw bytes
-                with open(output_path, "wb") as img_file:
-                    img_file.write(image._image_bytes)
+            if not image_saved:
+                raise RuntimeError("API returned no image data in response.")
 
             entry["status"] = "completed"
             completed_count += 1
-            print(f"  Saved: {output_path}")
+            file_size = os.path.getsize(output_path)
+            print(f"  Saved: {output_path} ({file_size:,} bytes)")
 
         except Exception as exc:
             error_msg = str(exc)
@@ -128,16 +133,14 @@ def generate_images(manifest_path: str) -> None:
             failed_count += 1
             print(f"  FAILED: {error_msg}", file=sys.stderr)
 
-        # Persist manifest after every attempt so progress is not lost
+        # Persist manifest after every attempt so progress survives crashes
         save_manifest(manifest, manifest_path)
 
-        # Rate-limit: pause between API calls
+        # Rate-limit between API calls
         if idx < len(pending) - 1:
             time.sleep(2)
 
-    # ------------------------------------------------------------------
     # Summary
-    # ------------------------------------------------------------------
     print(f"\nGeneration complete: {completed_count} succeeded, {failed_count} failed.")
     print(f"Manifest updated: {manifest_path}")
 

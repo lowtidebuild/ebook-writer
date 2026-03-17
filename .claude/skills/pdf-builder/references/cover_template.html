@@ -1,15 +1,56 @@
-<div class="cover-page">
-  <div class="cover-content">
-    <h1 class="cover-title">{{TITLE}}</h1>
-    <p class="cover-subtitle">{{SUBTITLE}}</p>
-    <div class="cover-divider" style="
-      width: 60px;
-      height: 3px;
-      background: #a8b2d1;
-      margin: 1.5em auto;
-      border-radius: 2px;
-    "></div>
-    <p class="cover-author">{{AUTHOR}}</p>
-    <p class="cover-date">{{DATE}}</p>
+<section class="cover">
+  <div class="cover-page" style="
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 176mm;
+    height: 250mm;
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+    color: #ffffff;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+  ">
+    <div class="cover-content" style="max-width: 80%;">
+      <h1 class="cover-title" style="
+        font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+        font-size: 28pt;
+        font-weight: 700;
+        line-height: 1.25;
+        margin: 0 0 0.4em 0;
+        color: #ffffff;
+        border: none;
+      ">{{TITLE}}</h1>
+      <p class="cover-subtitle" style="
+        font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+        font-size: 14pt;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.75);
+        margin: 0 0 2em 0;
+        text-indent: 0;
+      ">{{SUBTITLE}}</p>
+      <div class="cover-divider" style="
+        width: 40mm;
+        height: 1pt;
+        background: rgba(255, 255, 255, 0.5);
+        margin: 1.5em auto;
+      "></div>
+      <p class="cover-author" style="
+        font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+        font-size: 12pt;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.85);
+        letter-spacing: 0.15em;
+        margin: 0 0 0.5em 0;
+        text-indent: 0;
+      ">{{AUTHOR}}</p>
+      <p class="cover-date" style="
+        font-family: 'Noto Sans CJK KR', sans-serif;
+        font-size: 9pt;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 0;
+        text-indent: 0;
+      ">{{DATE}}</p>
+    </div>
   </div>
-</div>
+</section>

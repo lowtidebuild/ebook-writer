@@ -39,6 +39,16 @@ Stick to this palette unless the subject matter specifically demands other color
 - Avoid humor, clip-art style, or cartoonish exaggeration.
 - Prefer abstract or schematic representations of concepts over literal depictions of people or places.
 
+## Image Selection Philosophy (IMPORTANT)
+
+The goal is **fewer, better images** — not more images. Each image must earn its place:
+
+- **YES**: Architecture diagrams, workflow flowcharts, comparison matrices, annotated screenshots, step-by-step process diagrams
+- **NO**: Generic "person at desk" illustrations, abstract concept art, decorative infographics that restate what the text already says
+- **Target**: 2-3 images per chapter maximum
+- A chapter with 1 excellent workflow diagram is better than a chapter with 5 decorative illustrations
+- For a legal/professional book, readers trust **structured diagrams and tables** far more than **pretty stock illustrations**
+
 ## Prompt Template
 
 When filling in the `prompt` field of the manifest, follow this structure:

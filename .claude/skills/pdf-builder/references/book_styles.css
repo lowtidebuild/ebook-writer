@@ -1,53 +1,223 @@
 /* ===================================================================
-   book_styles.css -- Professional book layout for WeasyPrint
+   book_styles.css -- Professional Korean book typesetting for WeasyPrint
+   B5 (176x250mm) layout with running headers, proper chapter openings,
+   and print-grade typography.
    =================================================================== */
 
-/* ----- Page setup -------------------------------------------------- */
+/* =================================================================
+   PAGE SETUP
+   ================================================================= */
 
 @page {
-    size: A4;
-    margin: 2.5cm 2cm;
-
-    @bottom-center {
-        content: counter(page);
-        font-family: "Pretendard", "Noto Sans KR", sans-serif;
-        font-size: 9pt;
-        color: #666;
-    }
+    size: 176mm 250mm;  /* B5 Korean standard */
 }
 
-/* Suppress header/footer on the cover page */
-@page :first {
+@page :right {
+    margin: 25mm 18mm 20mm 22mm;  /* top right bottom left — inner margin wider */
+
+    @top-right {
+        content: string(chapter-title);
+        font: 400 8pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #666;
+    }
+
+    @top-left {
+        content: none;
+    }
+
+    @bottom-right {
+        content: counter(page);
+        font: 400 9pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #333;
+    }
+
+    @bottom-left {
+        content: none;
+    }
+
     @bottom-center {
         content: none;
     }
 }
 
-/* ----- Base typography --------------------------------------------- */
+@page :left {
+    margin: 25mm 22mm 20mm 18mm;  /* top right bottom left — inner margin wider */
 
-body {
-    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo",
-                 "Malgun Gothic", sans-serif;
-    font-size: 11pt;
-    line-height: 1.7;
-    color: #1a1a1a;
-    orphans: 3;
-    widows: 3;
+    @top-left {
+        content: string(book-title);
+        font: 400 8pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #666;
+    }
+
+    @top-right {
+        content: none;
+    }
+
+    @bottom-left {
+        content: counter(page);
+        font: 400 9pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #333;
+    }
+
+    @bottom-right {
+        content: none;
+    }
+
+    @bottom-center {
+        content: none;
+    }
 }
 
-/* ----- Cover page -------------------------------------------------- */
+/* Chapter opening pages: no running headers, page number bottom-center only */
+@page chapter-opening {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center {
+        content: counter(page);
+        font: 400 9pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #333;
+    }
+}
+
+/* Cover page: no margins, no headers/footers */
+@page cover {
+    margin: 0;
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* Title page: no headers/footers */
+@page title-page {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* Copyright page: no headers/footers */
+@page copyright-page {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* TOC page: no running headers, page number bottom-center */
+@page toc-page {
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+    @bottom-center {
+        content: counter(page);
+        font: 400 9pt 'Noto Sans CJK KR', 'Noto Sans KR', sans-serif;
+        color: #333;
+    }
+}
+
+
+/* =================================================================
+   BASE TYPOGRAPHY
+   ================================================================= */
+
+body {
+    font-family: 'Noto Serif CJK KR', 'Noto Serif', serif;
+    font-size: 10pt;
+    line-height: 1.75;
+    text-align: justify;
+    word-break: keep-all;
+    color: #1A1A1A;
+    orphans: 2;
+    widows: 2;
+}
+
+/* Book title meta element — provides string for running headers */
+.book-title-meta {
+    string-set: book-title content();
+}
+
+/* ----- Paragraphs -------------------------------------------------- */
+
+p {
+    text-indent: 1em;
+    margin: 0;
+}
+
+p:first-of-type,
+h1 + p,
+h2 + p,
+h3 + p,
+h4 + p,
+.chapter-rule + p,
+.chapter-opening + p {
+    text-indent: 0;
+}
+
+/* ----- Headings ---------------------------------------------------- */
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    line-height: 1.3;
+    color: #1A1A1A;
+}
+
+h1 {
+    font-size: 20pt;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 0.6em;
+    border: none;
+}
+
+h2 {
+    font-size: 13pt;
+    font-weight: 600;
+    margin-top: 1.8em;
+    margin-bottom: 0.6em;
+    padding-bottom: 0.2em;
+    border-bottom: 0.5pt solid #CCC;
+}
+
+h3 {
+    font-size: 11pt;
+    font-weight: 600;
+    margin-top: 1.4em;
+    margin-bottom: 0.4em;
+}
+
+h4, h5, h6 {
+    font-size: 10pt;
+    font-weight: 600;
+    margin-top: 1.2em;
+    margin-bottom: 0.3em;
+}
+
+
+/* =================================================================
+   COVER PAGE
+   ================================================================= */
+
+section.cover {
+    page: cover;
+    page-break-after: always;
+}
 
 .cover-page {
-    page-break-after: always;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    width: 176mm;
+    height: 250mm;
     background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
     color: #ffffff;
     text-align: center;
-    margin: -2.5cm -2cm;
-    padding: 2cm;
 }
 
 .cover-content {
@@ -55,45 +225,129 @@ body {
 }
 
 .cover-title {
-    font-size: 32pt;
-    font-weight: 800;
-    line-height: 1.2;
-    margin-bottom: 0.5em;
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 28pt;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 0.4em;
     color: #ffffff;
-    page-break-before: avoid;
-    border-bottom: none;
+    border: none;
+    string-set: none;
 }
 
 .cover-subtitle {
-    font-size: 16pt;
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 14pt;
     font-weight: 300;
-    color: #a8b2d1;
+    color: rgba(255, 255, 255, 0.75);
     margin-bottom: 2em;
 }
 
+.cover-divider {
+    width: 40mm;
+    height: 1pt;
+    background: rgba(255, 255, 255, 0.5);
+    margin: 1.5em auto;
+}
+
 .cover-author {
-    font-size: 13pt;
-    color: #ccd6f6;
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.15em;
     margin-bottom: 0.5em;
 }
 
 .cover-date {
-    font-size: 11pt;
-    color: #8892b0;
+    font-family: 'Noto Sans CJK KR', sans-serif;
+    font-size: 9pt;
+    color: rgba(255, 255, 255, 0.5);
 }
 
-/* ----- Table of contents ------------------------------------------- */
+
+/* =================================================================
+   TITLE PAGE
+   ================================================================= */
+
+section.title-page {
+    page: title-page;
+    page-break-after: always;
+}
+
+.title-page-content {
+    padding-top: 35%;
+    text-align: center;
+}
+
+.title-page-content h1 {
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 22pt;
+    font-weight: 700;
+    color: #1A1A1A;
+    margin-bottom: 0.5em;
+    border: none;
+    string-set: none;
+}
+
+.title-page-content .subtitle {
+    font-family: 'Noto Serif CJK KR', 'Noto Serif', serif;
+    font-size: 12pt;
+    color: #666;
+    margin-bottom: 3em;
+}
+
+.title-page-content .author {
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 12pt;
+    color: #333;
+    letter-spacing: 0.1em;
+}
+
+
+/* =================================================================
+   COPYRIGHT PAGE
+   ================================================================= */
+
+section.copyright-page {
+    page: copyright-page;
+    page-break-after: always;
+}
+
+.copyright-content {
+    padding-top: 70%;
+    font-family: 'Noto Sans CJK KR', sans-serif;
+    font-size: 8.5pt;
+    color: #666;
+    line-height: 1.8;
+}
+
+.copyright-content p {
+    text-indent: 0;
+    margin: 0;
+    margin-bottom: 0.3em;
+}
+
+
+/* =================================================================
+   TABLE OF CONTENTS
+   ================================================================= */
 
 .toc-page {
+    page: toc-page;
     page-break-after: always;
 }
 
 .toc-page h1 {
-    font-size: 22pt;
-    margin-bottom: 1em;
-    page-break-before: avoid;
-    border-bottom: 2px solid #0f3460;
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-size: 16pt;
+    font-weight: 700;
+    margin-bottom: 1.5em;
     padding-bottom: 0.3em;
+    border-bottom: 1pt solid #333;
+    border-top: none;
+    color: #1A1A1A;
+    string-set: none;
 }
 
 .toc-list {
@@ -103,77 +357,88 @@ body {
 }
 
 .toc-list li {
-    padding: 0.3em 0;
-    border-bottom: 1px dotted #ccc;
+    padding: 0.25em 0;
 }
 
-.toc-list li.toc-h1 {
-    font-size: 12pt;
+.toc-list li a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.toc-list li.toc-chapter {
+    font-family: 'Noto Serif CJK KR', 'Noto Serif', serif;
+    font-size: 11pt;
     font-weight: 700;
     padding-left: 0;
-    margin-top: 0.5em;
+    margin-top: 0.6em;
+    border-bottom: 0.3pt solid #DDD;
+    padding-bottom: 0.3em;
 }
 
-.toc-list li.toc-h2 {
-    font-size: 10.5pt;
+.toc-list li.toc-chapter:first-child {
+    margin-top: 0;
+}
+
+.toc-list li.toc-section {
+    font-family: 'Noto Serif CJK KR', 'Noto Serif', serif;
+    font-size: 10pt;
     font-weight: 400;
     padding-left: 1.5em;
     color: #444;
 }
 
-/* ----- Headings ---------------------------------------------------- */
+.toc-page-num::after {
+    content: target-counter(attr(href url), page);
+    font-family: 'Noto Sans CJK KR', sans-serif;
+    font-size: 9pt;
+    color: #666;
+}
 
-h1 {
-    font-size: 22pt;
-    font-weight: 800;
-    color: #0f3460;
-    margin-top: 0;
-    margin-bottom: 0.6em;
+
+/* =================================================================
+   CHAPTER OPENING
+   ================================================================= */
+
+section.chapter {
+    page: chapter-opening;
+    page-break-before: right;  /* Always start on a recto (odd) page */
+}
+
+.chapter-opening {
+    padding-top: 30%;  /* ~30% top whitespace */
+}
+
+.chapter-number {
+    font: 600 14pt 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    letter-spacing: 0.1em;
+    color: #666;
+    display: block;
+    margin-bottom: 8mm;
+}
+
+.chapter-title {
+    font: 700 20pt 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    color: #1A1A1A;
+    margin: 0 0 5mm 0;
+    border: none;
     line-height: 1.3;
-    border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 0.25em;
+    string-set: chapter-title content();
 }
 
-h2 {
-    font-size: 16pt;
-    font-weight: 700;
-    color: #16213e;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    line-height: 1.35;
+.chapter-rule {
+    width: 30mm;
+    height: 1pt;
+    background: #999;
+    margin-bottom: 12mm;
 }
 
-h3 {
-    font-size: 13pt;
-    font-weight: 600;
-    color: #1a1a2e;
-    margin-top: 1.2em;
-    margin-bottom: 0.4em;
-    line-height: 1.4;
-}
 
-h4, h5, h6 {
-    font-size: 11pt;
-    font-weight: 600;
-    color: #333;
-    margin-top: 1em;
-    margin-bottom: 0.3em;
-}
-
-/* ----- Chapters ---------------------------------------------------- */
-
-.chapter {
-    page-break-before: always;
-}
-
-/* ----- Paragraphs & inline ----------------------------------------- */
-
-p {
-    margin-top: 0;
-    margin-bottom: 0.8em;
-    text-align: justify;
-    hyphens: auto;
-}
+/* =================================================================
+   INLINE ELEMENTS
+   ================================================================= */
 
 strong {
     font-weight: 700;
@@ -184,30 +449,133 @@ em {
 }
 
 a {
-    color: #0f3460;
+    color: #333;
     text-decoration: underline;
+    text-decoration-color: #BBB;
 }
 
-/* ----- Code -------------------------------------------------------- */
+
+/* =================================================================
+   BLOCKQUOTES — book-style, no left border
+   ================================================================= */
+
+blockquote {
+    margin: 1.5em 2em;
+    padding: 0;
+    font-style: italic;
+    font-size: 9.5pt;
+    border: none;
+    background: none;
+    color: #333;
+    line-height: 1.7;
+}
+
+blockquote p {
+    text-indent: 0;
+    margin-bottom: 0.4em;
+}
+
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* =================================================================
+   CALLOUT BOXES
+   ================================================================= */
+
+.callout {
+    background: #F5F5F5;
+    border: 0.5pt solid #E0E0E0;
+    border-radius: 3pt;
+    padding: 12pt;
+    margin: 1em 0;
+    font-size: 9.5pt;
+    line-height: 1.65;
+}
+
+.callout p {
+    text-indent: 0;
+    margin-bottom: 0.4em;
+}
+
+.callout p:last-child {
+    margin-bottom: 0;
+}
+
+.callout-title {
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-weight: 600;
+    font-size: 9.5pt;
+    margin-bottom: 0.3em;
+    color: #333;
+}
+
+
+/* =================================================================
+   TABLES — horizontal lines only, no vertical borders
+   ================================================================= */
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 9.5pt;
+    margin: 1.2em 0;
+    line-height: 1.5;
+}
+
+th {
+    background: #F0F0F0;
+    font-family: 'Pretendard', 'Noto Sans CJK KR', sans-serif;
+    font-weight: 600;
+    text-align: left;
+    padding: 6pt 8pt;
+    border-top: 1pt solid #333;
+    border-bottom: 1pt solid #333;
+    border-left: none;
+    border-right: none;
+}
+
+td {
+    padding: 6pt 8pt;
+    border-bottom: 0.3pt solid #DDD;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    vertical-align: top;
+}
+
+/* Last row gets a heavier bottom border */
+tr:last-child td {
+    border-bottom: 0.5pt solid #999;
+}
+
+
+/* =================================================================
+   CODE
+   ================================================================= */
+
+pre, code {
+    font-family: 'Fira Code', 'D2Coding', 'Nanum Gothic Coding', 'Consolas', monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+}
 
 code {
-    font-family: "JetBrains Mono", "Fira Code", "D2Coding", "Nanum Gothic Coding",
-                 "Consolas", "Courier New", monospace;
-    font-size: 9pt;
-    background: #f5f5f5;
-    padding: 0.15em 0.35em;
-    border-radius: 3px;
+    background: #F5F5F5;
+    padding: 0.1em 0.3em;
+    border-radius: 2pt;
     color: #c7254e;
 }
 
 pre {
-    background: #f5f5f5;
-    padding: 1em;
-    border-radius: 4px;
-    overflow-x: auto;
-    line-height: 1.45;
+    background: #F8F8F8;
+    border: 0.5pt solid #E0E0E0;
+    border-radius: 2pt;
+    padding: 10pt;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
     margin: 1em 0;
-    border: 1px solid #e0e0e0;
 }
 
 pre code {
@@ -218,9 +586,12 @@ pre code {
     font-size: 9pt;
 }
 
-/* ----- Pygments "friendly" theme ----------------------------------- */
 
-.highlight { background: #f5f5f5; }
+/* =================================================================
+   PYGMENTS "friendly" THEME
+   ================================================================= */
+
+.highlight { background: #F8F8F8; }
 .highlight .hll { background-color: #ffffcc }
 .highlight .c   { color: #60a0b0; font-style: italic }  /* Comment */
 .highlight .err { border: 1px solid #ff0000 }            /* Error */
@@ -290,14 +661,16 @@ pre code {
 .highlight .vm  { color: #bb60d5 }                       /* Name.Variable.Magic */
 .highlight .il  { color: #40a070 }                       /* Literal.Number.Integer.Long */
 
-/* ----- Images ------------------------------------------------------ */
+
+/* =================================================================
+   IMAGES
+   ================================================================= */
 
 img {
     max-width: 80%;
     height: auto;
     display: block;
     margin: 1.5em auto;
-    border-radius: 4px;
 }
 
 figure {
@@ -306,63 +679,31 @@ figure {
 }
 
 figcaption {
-    font-size: 9.5pt;
+    font-family: 'Noto Sans CJK KR', sans-serif;
+    font-size: 8.5pt;
+    font-weight: 400;
     color: #666;
     margin-top: 0.5em;
     font-style: italic;
 }
 
-/* ----- Blockquotes ------------------------------------------------- */
 
-blockquote {
-    border-left: 4px solid #0f3460;
-    margin: 1.2em 0;
-    padding: 0.6em 1.2em;
-    background: #f8f9fc;
-    color: #444;
-    font-style: italic;
+/* =================================================================
+   FOOTNOTES
+   ================================================================= */
+
+.footnote {
+    font-family: 'Noto Sans CJK KR', sans-serif;
+    font-size: 8.5pt;
+    font-weight: 400;
+    color: #666;
+    line-height: 1.5;
 }
 
-blockquote p {
-    margin-bottom: 0.3em;
-}
 
-blockquote p:last-child {
-    margin-bottom: 0;
-}
-
-/* ----- Tables ------------------------------------------------------ */
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1.2em 0;
-    font-size: 10pt;
-}
-
-thead th {
-    background: #0f3460;
-    color: #ffffff;
-    font-weight: 700;
-    text-align: left;
-    padding: 0.6em 0.8em;
-}
-
-tbody td {
-    padding: 0.5em 0.8em;
-    border-bottom: 1px solid #ddd;
-    vertical-align: top;
-}
-
-tbody tr:nth-child(even) {
-    background: #f5f7fa;
-}
-
-tbody tr:nth-child(odd) {
-    background: #ffffff;
-}
-
-/* ----- Lists ------------------------------------------------------- */
+/* =================================================================
+   LISTS
+   ================================================================= */
 
 ul, ol {
     margin: 0.8em 0;
@@ -370,18 +711,21 @@ ul, ol {
 }
 
 li {
-    margin-bottom: 0.3em;
+    margin-bottom: 0.25em;
 }
 
 li > ul, li > ol {
-    margin-top: 0.2em;
-    margin-bottom: 0.2em;
+    margin-top: 0.15em;
+    margin-bottom: 0.15em;
 }
 
-/* ----- Horizontal rule --------------------------------------------- */
+
+/* =================================================================
+   HORIZONTAL RULE
+   ================================================================= */
 
 hr {
     border: none;
-    border-top: 1px solid #ddd;
+    border-top: 0.5pt solid #CCC;
     margin: 2em 0;
 }
