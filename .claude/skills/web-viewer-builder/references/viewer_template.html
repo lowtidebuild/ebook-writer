@@ -1,812 +1,103 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="{{LANG}}">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{TITLE}}</title>
 <style>
-/* ===== Reset & Base ===== */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-  overflow: hidden;
-  font-family: 'Georgia', 'Noto Serif KR', 'Batang', serif;
-  background: #f0ede6;
-  color: #2c2c2c;
-  line-height: 1.8;
-  font-size: 17px;
-}
-
-/* ===== Layout Shell ===== */
-.app {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-}
-
-/* ===== Sidebar / TOC ===== */
-.sidebar {
-  width: 300px;
-  min-width: 300px;
-  background: #2c2c2c;
-  color: #e0ddd5;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.3s ease;
-  z-index: 100;
-}
-
-.sidebar-header {
-  padding: 24px 20px 16px;
-  border-bottom: 1px solid #444;
-}
-
-.sidebar-header h1 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #f5f2eb;
-  line-height: 1.4;
-}
-
-.sidebar-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: #888;
-  margin-top: 12px;
-}
-
-.toc-list {
-  list-style: none;
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
-}
-
-.toc-item {
-  padding: 10px 20px;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1.5;
-  transition: background 0.15s;
-  border-left: 3px solid transparent;
-}
-
-.toc-item:hover {
-  background: #3a3a3a;
-}
-
-.toc-item.active {
-  background: #3a3a3a;
-  border-left-color: #c9a96e;
-  color: #f5f2eb;
-}
-
-.toc-chapter-num {
-  color: #c9a96e;
-  font-weight: 600;
-  margin-right: 4px;
-}
-
-/* ===== Main Content Area ===== */
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-
-/* ===== Top Bar ===== */
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 24px;
-  background: #fafafa;
-  border-bottom: 1px solid #e0dcd4;
-  min-height: 50px;
-}
-
-.topbar-title {
-  font-size: 14px;
-  color: #888;
-  font-style: italic;
-}
-
-.menu-btn {
-  display: none;
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 18px;
-  cursor: pointer;
-  color: #555;
-}
-
-.lang-toggle {
-  background: #2c2c2c;
-  color: #f5f2eb;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  transition: background 0.2s;
-}
-
-.lang-toggle:hover {
-  background: #444;
-}
-
-/* ===== Page Viewport ===== */
-.page-viewport {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: #fafafa;
-}
-
-.page-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  padding: 48px 64px 80px;
-  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-}
-
-.page-container.slide-out-left {
-  transform: translateX(-100%);
-  opacity: 0;
-}
-
-.page-container.slide-out-right {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-.page-container.slide-in-left {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-.page-container.slide-in-right {
-  transform: translateX(-100%);
-  opacity: 0;
-}
-
-.page-container.active {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-/* ===== Navigation Tap Zones ===== */
-.nav-zone {
-  position: absolute;
-  top: 0;
-  width: 20%;
-  height: calc(100% - 56px);
-  z-index: 10;
-  cursor: pointer;
-}
-
-.nav-zone-prev {
-  left: 0;
-}
-
-.nav-zone-next {
-  right: 0;
-}
-
-.nav-zone:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-/* ===== Bottom Navigation Bar ===== */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 24px;
-  background: #fafafa;
-  border-top: 1px solid #e0dcd4;
-  min-height: 56px;
-}
-
-.nav-btn {
-  background: #2c2c2c;
-  color: #f5f2eb;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 24px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  min-width: 100px;
-}
-
-.nav-btn:hover {
-  background: #444;
-}
-
-.nav-btn:disabled {
-  background: #ccc;
-  color: #888;
-  cursor: not-allowed;
-}
-
-.page-indicator {
-  font-size: 13px;
-  color: #888;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ===== Page Content Typography ===== */
-.page {
-  display: none;
-}
-
-.page-content h1 {
-  font-size: 28px;
-  margin-bottom: 24px;
-  color: #1a1a1a;
-  border-bottom: 2px solid #c9a96e;
-  padding-bottom: 12px;
-}
-
-.page-content h2 {
-  font-size: 22px;
-  margin-top: 32px;
-  margin-bottom: 16px;
-  color: #2c2c2c;
-}
-
-.page-content h3 {
-  font-size: 18px;
-  margin-top: 24px;
-  margin-bottom: 12px;
-  color: #3a3a3a;
-}
-
-.page-content p {
-  margin-bottom: 16px;
-  text-align: justify;
-  word-break: keep-all;
-}
-
-.page-content a {
-  color: #6a5a3e;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.page-content ul, .page-content ol {
-  margin-bottom: 16px;
-  padding-left: 28px;
-}
-
-.page-content li {
-  margin-bottom: 6px;
-}
-
-.page-content blockquote {
-  border-left: 4px solid #c9a96e;
-  padding: 12px 20px;
-  margin: 20px 0;
-  background: #f5f2eb;
-  color: #555;
-  font-style: italic;
-}
-
-.page-content pre {
-  background: #2c2c2c;
-  color: #e0ddd5;
-  padding: 20px;
-  border-radius: 8px;
-  overflow-x: auto;
-  margin: 20px 0;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.page-content code {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 0.9em;
-}
-
-.page-content p code,
-.page-content li code {
-  background: #eae6de;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.85em;
-}
-
-.page-content img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 24px auto;
-  border-radius: 6px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.page-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 20px 0;
-  font-size: 15px;
-}
-
-.page-content th,
-.page-content td {
-  border: 1px solid #ddd;
-  padding: 10px 14px;
-  text-align: left;
-}
-
-.page-content th {
-  background: #eae6de;
-  font-weight: 600;
-}
-
-.page-content tr:nth-child(even) {
-  background: #f9f7f3;
-}
-
-.page-content hr {
-  border: none;
-  border-top: 1px solid #ddd;
-  margin: 32px 0;
-}
-
-/* ===== Sidebar Overlay (mobile) ===== */
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 90;
-}
-
-/* ===== Mobile Responsive ===== */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    transform: translateX(-100%);
-    width: 280px;
-    min-width: 280px;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .sidebar-overlay.visible {
-    display: block;
-  }
-
-  .menu-btn {
-    display: block;
-  }
-
-  .page-container {
-    padding: 24px 20px 60px;
-  }
-
-  .page-content h1 {
-    font-size: 22px;
-  }
-
-  .page-content h2 {
-    font-size: 18px;
-  }
-
-  .nav-btn {
-    padding: 10px 16px;
-    font-size: 13px;
-    min-width: 80px;
-  }
-
-  .nav-zone {
-    width: 15%;
-  }
-
-  body {
-    font-size: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-container {
-    padding: 16px 14px 48px;
-  }
-
-  .topbar {
-    padding: 8px 14px;
-  }
-
-  .navbar {
-    padding: 10px 14px;
-  }
-
-  .topbar-title {
-    display: none;
-  }
-}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#1e1e1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
+  .bar{background:#111;color:#aaa;display:flex;align-items:center;justify-content:space-between;padding:6px 14px;font-size:13px;flex-shrink:0;z-index:20}
+  .bar .t{font-weight:600;color:#ddd;font-size:13px}.bar .c{display:flex;align-items:center;gap:8px}
+  .bar button{background:#333;color:#ddd;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;font-size:12px}
+  .bar button:hover{background:#444}.bar button.on{background:#3b6de0;color:#fff}
+  .bar .pg{color:#888;min-width:80px;text-align:center;font-size:12px}
+  .main{flex:1;display:flex;overflow:hidden}
+  .sidebar{width:260px;background:#161616;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;flex-shrink:0;transition:margin-left .25s ease;z-index:15}
+  .sidebar.closed{margin-left:-260px}
+  .sb-header{padding:12px 14px 8px;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #2a2a2a;flex-shrink:0}
+  .sb-list{flex:1;overflow-y:auto;padding:6px 0}.sb-list::-webkit-scrollbar{width:4px}.sb-list::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+  .sb-item{display:block;width:100%;padding:8px 14px;border:none;background:none;color:#999;font-size:12px;text-align:left;cursor:pointer;transition:all .15s;line-height:1.4}
+  .sb-item:hover{background:#222;color:#ddd}
+  .sb-item.active{background:#1e2a4a;color:#7aabff;border-left:3px solid #3b6de0}
+  .sb-item .ch-num{display:inline-block;min-width:28px;color:#555;font-size:11px;font-weight:600}
+  .sb-item.active .ch-num{color:#5b8ddf}
+  .sb-toggle{background:none;border:none;color:#888;cursor:pointer;font-size:16px;padding:2px 6px;margin-right:8px}.sb-toggle:hover{color:#ddd}
+  .viewer{flex:1;display:flex;align-items:center;justify-content:center;position:relative;perspective:2000px}
+  .book-wrap{position:relative;transform-style:preserve-3d}
+  .book{display:flex;position:relative;box-shadow:0 8px 50px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04);border-radius:0 3px 3px 0}
+  .book::before{content:'';position:absolute;top:0;left:-3px;width:6px;height:100%;background:linear-gradient(to right,#0a0a0a,#2a2a2a 40%,#1a1a1a);border-radius:3px 0 0 3px;z-index:6}
+  .book::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:12px;height:100%;background:linear-gradient(to right,transparent 0%,rgba(0,0,0,.06) 20%,rgba(0,0,0,.12) 45%,rgba(0,0,0,.12) 55%,rgba(0,0,0,.06) 80%,transparent 100%);z-index:5;pointer-events:none}
+  .pg-box{position:relative;overflow:hidden;background:#fff}.pg-box canvas{display:block}
+  .pg-l::after{content:'';position:absolute;top:0;right:0;width:25px;height:100%;background:linear-gradient(to left,rgba(0,0,0,.07),transparent);pointer-events:none}
+  .pg-r::before{content:'';position:absolute;top:0;left:0;width:25px;height:100%;background:linear-gradient(to right,rgba(0,0,0,.07),transparent);pointer-events:none;z-index:2}
+  .pg-r{border-right:1px solid rgba(0,0,0,.08)}
+  .arr{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.08);width:40px;height:40px;border-radius:50%;font-size:16px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(4px)}
+  .arr:hover{background:rgba(255,255,255,.15);color:#fff}.arr-l{left:12px}.arr-r{right:12px}
+  .turning-fwd .pg-r{animation:turnFwd .45s cubic-bezier(.4,0,.2,1);transform-origin:left center}
+  .turning-bwd .pg-l{animation:turnBwd .45s cubic-bezier(.4,0,.2,1);transform-origin:right center}
+  @keyframes turnFwd{0%{transform:rotateY(0)}30%{transform:rotateY(-25deg);box-shadow:-8px 0 20px rgba(0,0,0,.2)}100%{transform:rotateY(0)}}
+  @keyframes turnBwd{0%{transform:rotateY(0)}30%{transform:rotateY(25deg);box-shadow:8px 0 20px rgba(0,0,0,.2)}100%{transform:rotateY(0)}}
+  .ld{position:fixed;inset:0;background:#1e1e1e;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#aaa;z-index:100;font-size:14px;gap:12px}
+  .ld.off{display:none}
+  .sp{width:32px;height:32px;border:3px solid #333;border-top-color:#3b6de0;border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(max-width:900px){.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:30}.sidebar.closed{margin-left:-260px}.book::before,.book::after{display:none}.pg-l::after,.pg-r::before{display:none}.pg-r{border-right:none}}
 </style>
 </head>
 <body>
-
-<!-- ===== Sidebar Overlay (mobile) ===== -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<div class="app">
-  <!-- ===== Sidebar / Table of Contents ===== -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <h1 id="sidebarTitle">{{TITLE}}</h1>
-      <div class="sidebar-label" id="tocLabel">목차</div>
-    </div>
-    <ul class="toc-list" id="tocList">
-      {{TOC_ITEMS}}
-    </ul>
-  </aside>
-
-  <!-- ===== Main Content ===== -->
-  <div class="main">
-    <!-- Top Bar -->
-    <div class="topbar">
-      <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">&#9776;</button>
-      <span class="topbar-title" id="topbarTitle">{{TITLE}}</span>
-      <button class="lang-toggle" id="langToggle">English</button>
-    </div>
-
-    <!-- Page Viewport -->
-    <div class="page-viewport" id="pageViewport">
-      <div class="nav-zone nav-zone-prev" id="navZonePrev" title="Previous page"></div>
-      <div class="nav-zone nav-zone-next" id="navZoneNext" title="Next page"></div>
-      <div class="page-container active" id="pageContainer">
-        <div class="page-content" id="pageContent"></div>
-      </div>
-    </div>
-
-    <!-- Bottom Navigation Bar -->
-    <div class="navbar">
-      <button class="nav-btn" id="prevBtn">&#8592; Prev</button>
-      <span class="page-indicator" id="pageIndicator">Page 1 of 1</span>
-      <button class="nav-btn" id="nextBtn">Next &#8594;</button>
-    </div>
+<div class="ld" id="ld"><div class="sp"></div><div>Loading...</div></div>
+<div class="bar">
+  <div style="display:flex;align-items:center">
+    <button class="sb-toggle" onclick="toggleSidebar()">&#9776;</button>
+    <span class="t" id="tt">{{TITLE}}</span>
+  </div>
+  <div class="c">
+    <button id="bk" class="on" onclick="sw('primary')">{{PRIMARY_LABEL}}</button>
+    <button id="be" onclick="sw('secondary')">{{SECONDARY_LABEL}}</button>
+    <span style="color:#333">|</span>
+    <button onclick="zo(-1)">-</button>
+    <span class="pg" id="pi">1 / 1</span>
+    <button onclick="zo(1)">+</button>
   </div>
 </div>
-
-<!-- ===== All Pages (hidden data) ===== -->
-<div id="pagesData" style="display:none;">
-{{PAGES}}
+<div class="main">
+  <div class="sidebar" id="sb"><div class="sb-header" id="sbh">Contents</div><div class="sb-list" id="sbl"></div></div>
+  <div class="viewer" id="vw">
+    <button class="arr arr-l" id="al" onclick="go(-1)">&#8249;</button>
+    <div class="book-wrap"><div class="book" id="bk_el"><div class="pg-box pg-l" id="pl"><canvas id="cl"></canvas></div><div class="pg-box pg-r" id="pr"><canvas id="cr"></canvas></div></div></div>
+    <button class="arr arr-r" id="ar" onclick="go(1)">&#8250;</button>
+  </div>
 </div>
-
-<script>
-(function () {
-  'use strict';
-
-  // ===== Configuration =====
-  var TOTAL_PAGES = {
-    ko: {{TOTAL_PAGES_KO}},
-    en: {{TOTAL_PAGES_EN}}
-  };
-
-  // ===== State =====
-  var state = {
-    lang: localStorage.getItem('ebook-lang') || 'ko',
-    currentPage: 1,
-    animating: false
-  };
-
-  // ===== DOM References =====
-  var dom = {
-    sidebar: document.getElementById('sidebar'),
-    sidebarOverlay: document.getElementById('sidebarOverlay'),
-    menuBtn: document.getElementById('menuBtn'),
-    langToggle: document.getElementById('langToggle'),
-    pageContainer: document.getElementById('pageContainer'),
-    pageContent: document.getElementById('pageContent'),
-    prevBtn: document.getElementById('prevBtn'),
-    nextBtn: document.getElementById('nextBtn'),
-    pageIndicator: document.getElementById('pageIndicator'),
-    tocList: document.getElementById('tocList'),
-    tocLabel: document.getElementById('tocLabel'),
-    navZonePrev: document.getElementById('navZonePrev'),
-    navZoneNext: document.getElementById('navZoneNext'),
-    pagesData: document.getElementById('pagesData')
-  };
-
-  // ===== Page Data Extraction =====
-  var pages = { ko: [], en: [] };
-
-  function extractPages() {
-    var allPageDivs = dom.pagesData.querySelectorAll('.page');
-    for (var i = 0; i < allPageDivs.length; i++) {
-      var el = allPageDivs[i];
-      var lang = el.getAttribute('data-lang');
-      var pageNum = parseInt(el.getAttribute('data-page'), 10);
-      var chapter = parseInt(el.getAttribute('data-chapter'), 10);
-      if (pages[lang]) {
-        pages[lang].push({
-          num: pageNum,
-          chapter: chapter,
-          html: el.innerHTML
-        });
-      }
-    }
-  }
-
-  // ===== TOC Management =====
-  function updateTocVisibility() {
-    var items = dom.tocList.querySelectorAll('.toc-item');
-    for (var i = 0; i < items.length; i++) {
-      var itemLang = items[i].getAttribute('data-lang');
-      items[i].style.display = (itemLang === state.lang) ? '' : 'none';
-    }
-    dom.tocLabel.textContent = (state.lang === 'ko') ? '목차' : 'Contents';
-  }
-
-  function updateTocActive() {
-    var items = dom.tocList.querySelectorAll('.toc-item[data-lang="' + state.lang + '"]');
-    var activeEntry = null;
-    for (var i = 0; i < items.length; i++) {
-      items[i].classList.remove('active');
-      var target = parseInt(items[i].getAttribute('data-target-page'), 10);
-      if (target <= state.currentPage) {
-        activeEntry = items[i];
-      }
-    }
-    if (activeEntry) {
-      activeEntry.classList.add('active');
-      // Scroll active item into view within sidebar
-      activeEntry.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }
-
-  // ===== Rendering =====
-  function getTotalPages() {
-    return TOTAL_PAGES[state.lang] || 0;
-  }
-
-  function renderPage(direction) {
-    if (state.animating) return;
-
-    var total = getTotalPages();
-    var pageData = pages[state.lang][state.currentPage - 1];
-
-    if (!pageData) {
-      dom.pageContent.innerHTML = '<p style="color:#888;text-align:center;margin-top:80px;">No content available.</p>';
-      updateNavButtons();
-      updatePageIndicator();
-      updateTocActive();
-      return;
-    }
-
-    if (direction === 'none') {
-      // No animation — direct render
-      dom.pageContent.innerHTML = pageData.html;
-      dom.pageContainer.className = 'page-container active';
-      updateNavButtons();
-      updatePageIndicator();
-      updateTocActive();
-      scrollToTop();
-      return;
-    }
-
-    // Animate page flip
-    state.animating = true;
-
-    var slideOutClass = (direction === 'next') ? 'slide-out-left' : 'slide-out-right';
-    var slideInClass = (direction === 'next') ? 'slide-in-left' : 'slide-in-right';
-
-    dom.pageContainer.className = 'page-container ' + slideOutClass;
-
-    setTimeout(function () {
-      dom.pageContent.innerHTML = pageData.html;
-      dom.pageContainer.className = 'page-container ' + slideInClass;
-
-      // Force reflow
-      void dom.pageContainer.offsetWidth;
-
-      dom.pageContainer.className = 'page-container active';
-
-      setTimeout(function () {
-        state.animating = false;
-      }, 300);
-    }, 300);
-
-    updateNavButtons();
-    updatePageIndicator();
-    updateTocActive();
-    scrollToTop();
-  }
-
-  function scrollToTop() {
-    dom.pageContainer.scrollTop = 0;
-  }
-
-  function updateNavButtons() {
-    var total = getTotalPages();
-    dom.prevBtn.disabled = (state.currentPage <= 1);
-    dom.nextBtn.disabled = (state.currentPage >= total);
-
-    if (state.lang === 'ko') {
-      dom.prevBtn.innerHTML = '&#8592; 이전';
-      dom.nextBtn.innerHTML = '다음 &#8594;';
-    } else {
-      dom.prevBtn.innerHTML = '&#8592; Prev';
-      dom.nextBtn.innerHTML = 'Next &#8594;';
-    }
-  }
-
-  function updatePageIndicator() {
-    var total = getTotalPages();
-    if (state.lang === 'ko') {
-      dom.pageIndicator.textContent = state.currentPage + ' / ' + total + ' 페이지';
-    } else {
-      dom.pageIndicator.textContent = 'Page ' + state.currentPage + ' of ' + total;
-    }
-  }
-
-  // ===== Navigation =====
-  function goToPage(pageNum, direction) {
-    var total = getTotalPages();
-    if (pageNum < 1 || pageNum > total || pageNum === state.currentPage) return;
-    var dir = direction || (pageNum > state.currentPage ? 'next' : 'prev');
-    state.currentPage = pageNum;
-    renderPage(dir);
-  }
-
-  function nextPage() {
-    goToPage(state.currentPage + 1, 'next');
-  }
-
-  function prevPage() {
-    goToPage(state.currentPage - 1, 'prev');
-  }
-
-  // ===== Language Toggle =====
-  function setLanguage(lang) {
-    state.lang = lang;
-    localStorage.setItem('ebook-lang', lang);
-
-    dom.langToggle.textContent = (lang === 'ko') ? 'English' : '한국어';
-    document.documentElement.lang = lang;
-
-    // Attempt to maintain proportional page position
-    var oldTotal = TOTAL_PAGES[lang === 'ko' ? 'en' : 'ko'] || 1;
-    var newTotal = TOTAL_PAGES[lang] || 1;
-    var ratio = state.currentPage / oldTotal;
-    state.currentPage = Math.max(1, Math.min(newTotal, Math.round(ratio * newTotal)));
-
-    updateTocVisibility();
-    renderPage('none');
-  }
-
-  function toggleLanguage() {
-    setLanguage(state.lang === 'ko' ? 'en' : 'ko');
-  }
-
-  // ===== Sidebar Toggle (mobile) =====
-  function openSidebar() {
-    dom.sidebar.classList.add('open');
-    dom.sidebarOverlay.classList.add('visible');
-  }
-
-  function closeSidebar() {
-    dom.sidebar.classList.remove('open');
-    dom.sidebarOverlay.classList.remove('visible');
-  }
-
-  // ===== Touch / Swipe =====
-  var touch = { startX: 0, startY: 0, startTime: 0 };
-
-  function onTouchStart(e) {
-    var t = e.touches[0];
-    touch.startX = t.clientX;
-    touch.startY = t.clientY;
-    touch.startTime = Date.now();
-  }
-
-  function onTouchEnd(e) {
-    var t = e.changedTouches[0];
-    var dx = t.clientX - touch.startX;
-    var dy = t.clientY - touch.startY;
-    var dt = Date.now() - touch.startTime;
-
-    // Must be a horizontal swipe: fast enough, long enough, mostly horizontal
-    if (dt < 500 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0) {
-        nextPage();
-      } else {
-        prevPage();
-      }
-    }
-  }
-
-  // ===== Event Bindings =====
-  function bindEvents() {
-    // Navigation buttons
-    dom.prevBtn.addEventListener('click', prevPage);
-    dom.nextBtn.addEventListener('click', nextPage);
-
-    // Navigation tap zones
-    dom.navZonePrev.addEventListener('click', prevPage);
-    dom.navZoneNext.addEventListener('click', nextPage);
-
-    // Keyboard
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        prevPage();
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        nextPage();
-      }
-    });
-
-    // Touch swipe
-    dom.pageContainer.addEventListener('touchstart', onTouchStart, { passive: true });
-    dom.pageContainer.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    // Language toggle
-    dom.langToggle.addEventListener('click', toggleLanguage);
-
-    // Sidebar toggle (mobile)
-    dom.menuBtn.addEventListener('click', function () {
-      if (dom.sidebar.classList.contains('open')) {
-        closeSidebar();
-      } else {
-        openSidebar();
-      }
-    });
-    dom.sidebarOverlay.addEventListener('click', closeSidebar);
-
-    // TOC item clicks
-    dom.tocList.addEventListener('click', function (e) {
-      var item = e.target.closest('.toc-item');
-      if (!item) return;
-      var targetPage = parseInt(item.getAttribute('data-target-page'), 10);
-      if (targetPage) {
-        goToPage(targetPage, 'none');
-        closeSidebar();
-      }
-    });
-  }
-
-  // ===== Initialization =====
-  function init() {
-    extractPages();
-    setLanguage(state.lang);
-    bindEvents();
-  }
-
-  // Start when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+<script type="module">
+const CDN='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155';
+const{getDocument,GlobalWorkerOptions}=await import(`${CDN}/pdf.min.mjs`);
+GlobalWorkerOptions.workerSrc=`${CDN}/pdf.worker.min.mjs`;
+let pdf,sp=0,np=0,zm=1,busy=0,mob=innerWidth<=900,lang='primary';
+const F={primary:'{{PRIMARY_PDF}}',secondary:'{{SECONDARY_PDF}}'};
+const T={primary:'{{TITLE}}',secondary:'{{TITLE_SECONDARY}}'};
+const P={primary:{{PRIMARY_CH_PATTERN}},secondary:{{SECONDARY_CH_PATTERN}}};
+const TL={primary:'{{PRIMARY_TOC_LABEL}}',secondary:'{{SECONDARY_TOC_LABEL}}'};
+const $=id=>document.getElementById(id);
+let toc=[];
+async function buildToc(){toc=[];const re=P[lang];for(let p=1;p<=np;p++){try{const pg=await pdf.getPage(p);const tc=await pg.getTextContent();const tx=tc.items.map(i=>i.str).join('');const m=tx.match(re);if(m){const cn=parseInt(m[0].match(/\d+/)[0]);let ti=m[0].replace(/\s+/g,' ').trim();if(ti.length>50)ti=ti.slice(0,48)+'...';if(p>10&&!toc.some(e=>e.c===cn))toc.push({c:cn,t:ti,p:p});}}catch(e){}}toc.sort((a,b)=>a.c-b.c);}
+function buildSB(){const l=$('sbl');l.innerHTML='';$('sbh').textContent=TL[lang];if(!toc.length){l.innerHTML='<div style="padding:14px;color:#666;font-size:12px">Scanning...</div>';return;}for(const e of toc){const b=document.createElement('button');b.className='sb-item';b.dataset.page=e.p;b.innerHTML=`<span class="ch-num">${e.c}.</span> ${e.t}`;b.onclick=()=>jmp(e.p);l.appendChild(b);}upd();}
+function upd(){const cur=mob?sp+1:sp*2+2;let act=null;document.querySelectorAll('.sb-item').forEach(i=>{i.classList.remove('active');if(parseInt(i.dataset.page)<=cur)act=i;});if(act){act.classList.add('active');act.scrollIntoView({block:'nearest',behavior:'smooth'});}}
+function jmp(p){if(!p||p<1)return;sp=mob?p-1:Math.floor((p-1)/2);anim('turning-fwd');dr();if(mob)toggleSidebar();}
+window.toggleSidebar=()=>{$('sb').classList.toggle('closed');};
+async function init(l){$('ld').classList.remove('off');try{pdf=await getDocument(F[l]).promise;np=pdf.numPages;sp=0;await buildToc();buildSB();await dr();}catch(e){$('ld').innerHTML=`<div style="color:#e55">${e.message}</div>`;}$('ld').classList.add('off');}
+async function rp(n,cv){if(n<1||n>np){cv.width=cv.height=0;cv.parentElement.style.display='none';return;}cv.parentElement.style.display='';const pg=await pdf.getPage(n),bv=pg.getViewport({scale:1});const h=$('vw').clientHeight-28,s=(h/bv.height)*zm;const vp=pg.getViewport({scale:s});cv.width=vp.width;cv.height=vp.height;await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;}
+async function dr(){if(busy)return;busy=1;if(mob){$('pr').style.display='none';await rp(sp+1,$('cl'));ui(sp+1,sp+1);}else{const l=sp*2+1,r=sp*2+2;$('pr').style.display='';await Promise.all([rp(l,$('cl')),rp(r,$('cr'))]);ui(l,Math.min(r,np));}upd();busy=0;}
+function ui(a,b){$('pi').textContent=a===b?`${a} / ${np}`:`${a}-${b} / ${np}`;$('al').style.visibility=sp===0?'hidden':'';$('ar').style.visibility=sp>=(mob?np-1:Math.floor((np-1)/2))?'hidden':'';}
+window.go=d=>{const mx=mob?np-1:Math.floor((np-1)/2);if(d>0&&sp<mx){sp++;anim('turning-fwd');dr();}if(d<0&&sp>0){sp--;anim('turning-bwd');dr();}};
+function anim(c){const b=$('bk_el');b.classList.remove('turning-fwd','turning-bwd');void b.offsetWidth;b.classList.add(c);setTimeout(()=>b.classList.remove(c),450);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();go(1);}if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();go(-1);}});
+let tx=0;document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(d<0?1:-1);});
+$('vw').addEventListener('click',e=>{if(e.target.closest('.arr'))return;const r=$('vw').getBoundingClientRect(),x=e.clientX-r.left;if(x<r.width*.15)go(-1);else if(x>r.width*.85)go(1);});
+window.zo=d=>{zm=Math.max(.5,Math.min(2.5,zm+d*.15));dr();};
+window.sw=l=>{lang=l;$('bk').classList.toggle('on',l==='primary');$('be').classList.toggle('on',l==='secondary');$('tt').textContent=T[l];init(l);};
+addEventListener('resize',()=>{mob=innerWidth<=900;dr();});
+init('primary');
 </script>
-
 </body>
 </html>

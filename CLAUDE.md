@@ -337,20 +337,19 @@ This step uses dependency-wave-based parallel execution:
 
 ### Step 8: Web Viewer Generation
 
-1. Build the web viewer:
+1. Build the web viewer (PDF.js-based):
    ```bash
    python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
-     --chapters-ko output/chapters/ko/ \
-     --chapters-en output/chapters/en/ \
-     --images output/images/ \
+     --pdf-primary output/final/book_{state.primary_language}.pdf \
+     --pdf-secondary output/final/book_{state.secondary_language}.pdf \
      --output output/web-viewer/ \
      --template .claude/skills/web-viewer-builder/references/viewer_template.html \
-     --title "{book title from outline}"
+     --title "{book title}" \
+     --title-secondary "{book title in secondary language}" \
+     --primary-lang {state.primary_language} \
+     --secondary-lang {state.secondary_language}
    ```
-   Note: The `--chapters-ko` and `--chapters-en` flags correspond to the language directories,
-   regardless of which is primary/secondary. If a directory doesn't exist (e.g., only one language),
-   pass only the existing directory.
-2. Verify `output/web-viewer/index.html` exists
+2. Verify `output/web-viewer/index.html` exists and PDF files are copied
 3. Update state: step_8.status = "completed", last_completed_step = 8
 
 ### Gate 2: Final Review
