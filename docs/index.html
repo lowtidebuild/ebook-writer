@@ -76,11 +76,52 @@ GlobalWorkerOptions.workerSrc=`${CDN}/pdf.worker.min.mjs`;
 let pdf,sp=0,np=0,zm=1,busy=0,mob=innerWidth<=900,lang='primary';
 const F={primary:'book_ko.pdf',secondary:'book_en.pdf'};
 const T={primary:'변호사를 위한 Claude Code 완전 정복',secondary:'Mastering Claude Code for Lawyers'};
-const P={primary:/제(\d+)장[:\s]+(.{3,60})/,secondary:/Chapter\s+(\d+)[:\s]+(.{3,60})/};
 const TL={primary:'목차',secondary:'Contents'};
 const $=id=>document.getElementById(id);
 let toc=[];
-async function buildToc(){toc=[];const re=P[lang];for(let p=1;p<=np;p++){try{const pg=await pdf.getPage(p);const tc=await pg.getTextContent();const tx=tc.items.map(i=>i.str).join('');const m=tx.match(re);if(m){const cn=parseInt(m[0].match(/\d+/)[0]);let ti=m[0].replace(/\s+/g,' ').trim();if(ti.length>50)ti=ti.slice(0,48)+'...';if(p>10&&!toc.some(e=>e.c===cn))toc.push({c:cn,t:ti,p:p});}}catch(e){}}toc.sort((a,b)=>a.c-b.c);}
+async function buildToc(){
+  toc=[];
+  // Strategy: chapter opening pages have the chapter number/title as the
+  // first significant text on the page, positioned in the upper portion.
+  // We look for items in the top 40% of the page that match "제N장" or "Chapter N".
+  for(let p=1;p<=np;p++){
+    try{
+      const pg=await pdf.getPage(p);
+      const vp=pg.getViewport({scale:1});
+      const pageH=vp.height;
+      const tc=await pg.getTextContent();
+      // Only look at text items in the top 40% of the page
+      const topItems=tc.items.filter(it=>it.transform&&it.transform[5]>pageH*0.6);
+      if(!topItems.length)continue;
+      // Build text from top items only
+      const topText=topItems.map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
+      // Match chapter heading patterns
+      let m=topText.match(/제(\d+)장[:\s.\-—]+(.{2,50})/);
+      if(!m) m=topText.match(/Chapter\s+(\d+)[:\s.\-—]+(.{2,50})/i);
+      if(!m){
+        // Some pages just have "Chapter N" as a standalone heading
+        m=topText.match(/^Chapter\s+(\d+)$/i);
+        if(m) m=[m[0],m[1],''];
+      }
+      if(!m){
+        m=topText.match(/^제(\d+)장$/);
+        if(m) m=[m[0],m[1],''];
+      }
+      if(m){
+        const cn=parseInt(m[1]);
+        // Skip if this is in the TOC pages (first ~12 pages)
+        if(p<=12)continue;
+        // Skip if we already have this chapter
+        if(toc.some(e=>e.c===cn))continue;
+        let title=m[0].trim();
+        if(title.length>55)title=title.slice(0,53)+'...';
+        toc.push({c:cn,t:title,p:p});
+      }
+    }catch(e){}
+  }
+  toc.sort((a,b)=>a.c-b.c);
+  console.log('TOC:',toc.map(e=>'Ch'+e.c+'=p'+e.p).join(', '));
+}
 function buildSB(){const l=$('sbl');l.innerHTML='';$('sbh').textContent=TL[lang];if(!toc.length){l.innerHTML='<div style="padding:14px;color:#666;font-size:12px">Scanning...</div>';return;}for(const e of toc){const b=document.createElement('button');b.className='sb-item';b.dataset.page=e.p;b.innerHTML=`<span class="ch-num">${e.c}.</span> ${e.t}`;b.onclick=()=>jmp(e.p);l.appendChild(b);}upd();}
 function upd(){const cur=mob?sp+1:sp*2+2;let act=null;document.querySelectorAll('.sb-item').forEach(i=>{i.classList.remove('active');if(parseInt(i.dataset.page)<=cur)act=i;});if(act){act.classList.add('active');act.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function jmp(p){if(!p||p<1)return;sp=mob?p-1:Math.floor((p-1)/2);anim('turning-fwd');dr();if(mob)toggleSidebar();}

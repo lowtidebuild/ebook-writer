@@ -28,13 +28,10 @@ LANG_CONFIG = {
     "ko": {
         "label": "한국어",
         "toc_label": "목차",
-        # Regex to find chapter headings: 제N장 followed by : or space and title text
-        "ch_pattern": r"/제(\d+)장[:\s]+(.{3,60})/",
     },
     "en": {
         "label": "English",
         "toc_label": "Contents",
-        "ch_pattern": r"/Chapter\s+(\d+)[:\s]+(.{3,60})/",
     },
 }
 
@@ -95,8 +92,6 @@ def main():
         "{{SECONDARY_LABEL}}": sl["label"],
         "{{PRIMARY_TOC_LABEL}}": pl["toc_label"],
         "{{SECONDARY_TOC_LABEL}}": sl["toc_label"],
-        "{{PRIMARY_CH_PATTERN}}": pl["ch_pattern"],
-        "{{SECONDARY_CH_PATTERN}}": sl["ch_pattern"],
     }
 
     for placeholder, value in replacements.items():
