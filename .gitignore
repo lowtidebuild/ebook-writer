@@ -1,0 +1,41 @@
+# Output artifacts (pipeline results - not source code)
+output/research/
+output/outline/
+output/chapters/
+output/images/
+output/edit/
+output/final/
+output/web-viewer/
+output/logs/
+output/pipeline_state.json
+
+# Design doc (internal reference only)
+ebook-generation-agent-design.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.log
