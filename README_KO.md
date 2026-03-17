@@ -242,23 +242,34 @@ flowchart LR
 
 ## 🚀 빠른 시작
 
-### 1. 의존성 설치
+### 1. 클론 & 설치
 
 ```bash
-# macOS
-brew install pango cairo gdk-pixbuf
-brew install --cask font-noto-serif-cjk-kr font-fira-code
-
-# Python
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/lowtidebuild/ebook-writer.git
+cd ebook-writer
+./setup.sh
 ```
+
+> 셋업 스크립트가 시스템 라이브러리, 폰트, Python 가상환경, `.env` 템플릿을 자동으로 설치합니다.
+>
+> <details><summary>수동 설치</summary>
+>
+> ```bash
+> # macOS
+> brew install pango cairo gdk-pixbuf
+> brew install --cask font-noto-serif-cjk-kr font-noto-sans-cjk-kr font-fira-code
+>
+> # Python
+> python3 -m venv .venv && source .venv/bin/activate
+> pip install -r requirements.txt
+> ```
+> </details>
 
 ### 2. 이미지 생성 설정 (선택)
 
 ```bash
-echo 'GEMINI_API_KEY=your-key-here' > .env
-echo 'IMAGE_MODEL=gemini-3.1-flash-image-preview' >> .env
+# .env 파일 편집 (setup.sh가 자동 생성)
+GEMINI_API_KEY=your-key-here
 ```
 
 ### 3. 실행

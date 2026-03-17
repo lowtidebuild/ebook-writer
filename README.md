@@ -244,23 +244,34 @@ The included **`legal`** plugin adds ethics guidelines, legal terminology valida
 
 ## 🚀 Quick Start
 
-### 1. Install dependencies
+### 1. Clone & setup
 
 ```bash
-# macOS
-brew install pango cairo gdk-pixbuf
-brew install --cask font-noto-serif-cjk-kr font-fira-code
-
-# Python
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/lowtidebuild/ebook-writer.git
+cd ebook-writer
+./setup.sh
 ```
+
+> The setup script automatically installs system libraries, fonts, Python venv, and creates a `.env` template.
+>
+> <details><summary>Manual installation</summary>
+>
+> ```bash
+> # macOS
+> brew install pango cairo gdk-pixbuf
+> brew install --cask font-noto-serif-cjk-kr font-noto-sans-cjk-kr font-fira-code
+>
+> # Python
+> python3 -m venv .venv && source .venv/bin/activate
+> pip install -r requirements.txt
+> ```
+> </details>
 
 ### 2. Set up image generation (optional)
 
 ```bash
-echo 'GEMINI_API_KEY=your-key-here' > .env
-echo 'IMAGE_MODEL=gemini-3.1-flash-image-preview' >> .env
+# Edit .env (created by setup.sh)
+GEMINI_API_KEY=your-key-here
 ```
 
 ### 3. Generate
