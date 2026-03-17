@@ -102,13 +102,14 @@ All state is tracked in `output/pipeline_state.json`. This file is the single so
 
 ### Language Configuration
 
-- **`primary_language`**: The language chapters are originally written in (default: `ko`)
-- **`secondary_language`**: The language chapters are translated into (default: `en`)
-- Supported values: `ko` (Korean), `en` (English)
-- These are set at pipeline initialization via the `--language` flag
-- Examples:
-  - `--language ko` → Write in Korean, translate to English (default)
-  - `--language en` → Write in English, translate to Korean
+- **`primary_language`**: The language chapters are written in. Auto-detected from user's input language, or set via `--language` flag.
+  - User asks in Korean → `ko`
+  - User asks in English → `en`
+- **`secondary_language`**: The language to translate into (if bilingual mode is enabled)
+- **`bilingual`**: `true` or `false`. If `false`, Steps 6 (Translation) is skipped, and only one PDF + single-language web viewer are produced.
+- At pipeline initialization, **ask the user**: "번역본도 필요하신가요? (Do you also need a translated version?)"
+  - If yes → `bilingual: true`, set secondary_language
+  - If no → `bilingual: false`, skip translation entirely
 
 ### State Update Rules
 
@@ -293,6 +294,8 @@ This step uses dependency-wave-based parallel execution:
 
 ### Step 6: Translation (Primary → Secondary Language, Parallel)
 
+**Skip this step if `state.bilingual` is `false`.** Set step_6.status = "skipped" and proceed to Step 7.
+
 1. List all chapter files in `output/chapters/{state.primary_language}/`
 2. For each chapter (parallel, max 5 concurrent Tasks):
    ```
@@ -321,7 +324,7 @@ This step uses dependency-wave-based parallel execution:
      --cover .claude/skills/pdf-builder/references/cover_template.html \
      --title "{book title from outline}"
    ```
-2. Build secondary language PDF:
+2. **If `state.bilingual` is `true`**, also build secondary language PDF:
    ```bash
    python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
      --chapters output/chapters/{state.secondary_language}/ \
@@ -332,7 +335,7 @@ This step uses dependency-wave-based parallel execution:
      --cover .claude/skills/pdf-builder/references/cover_template.html \
      --title "{book title from outline}"
    ```
-3. Verify both PDF files exist and have size > 10KB
+3. Verify PDF file(s) exist and have size > 10KB
 4. Update state: step_7.status = "completed", last_completed_step = 7
 
 ### Step 8: Web Viewer Generation
@@ -341,14 +344,15 @@ This step uses dependency-wave-based parallel execution:
    ```bash
    python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
      --pdf-primary output/final/book_{state.primary_language}.pdf \
-     --pdf-secondary output/final/book_{state.secondary_language}.pdf \
+     --pdf-secondary output/final/book_{state.secondary_language}.pdf \  # omit if not bilingual
      --output output/web-viewer/ \
      --template .claude/skills/web-viewer-builder/references/viewer_template.html \
      --title "{book title}" \
-     --title-secondary "{book title in secondary language}" \
+     --title-secondary "{book title in secondary language}" \  # omit if not bilingual
      --primary-lang {state.primary_language} \
      --secondary-lang {state.secondary_language}
    ```
+   If `state.bilingual` is `false`, omit `--pdf-secondary` and `--title-secondary`.
 2. Verify `output/web-viewer/index.html` exists and PDF files are copied
 3. Update state: step_8.status = "completed", last_completed_step = 8
 

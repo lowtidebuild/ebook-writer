@@ -54,12 +54,14 @@
 ```
 You say:    /generate "Claude Code for Lawyers" --plugin legal --author "Author"
 
-You get:    📄 book_ko.pdf    (250+ page typeset book in Korean)
-            📄 book_en.pdf    (full English translation)
+You get:    📄 book.pdf       (250+ page typeset book)
             🌐 web-viewer/    (browser-based reader with page-flip)
+            📄 book_en.pdf    (translated version — only if you want it)
 ```
 
-The entire pipeline runs automatically with only **two human checkpoints**:
+Language is **auto-detected** from your input. Translation is **optional** — the system asks if you need it.
+
+The pipeline runs automatically with only **two human checkpoints**:
 
 | Gate | When | What Happens |
 |:----:|------|-------------|
@@ -74,40 +76,36 @@ The entire pipeline runs automatically with only **two human checkpoints**:
 
 ## 🏗 Architecture
 
-<div align="center">
+```mermaid
+graph TD
+    O["🧠 CLAUDE.md<br/>Orchestrator"]
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      CLAUDE.md                          │
-│                     Orchestrator                        │
-│                                                         │
-│   Pipeline State  ·  Agent Dispatch  ·  Quality Gates   │
-│   Retry Protocol  ·  Plugin Injection                   │
-└────────────┬────────────────────────────────────────────┘
-             │
-     ┌───────┼───────┬───────────┬───────────┐
-     ▼       ▼       ▼           ▼           ▼
-┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────┐
-│         │ │         │ │         │ │         │ │          │
-│Researcher│ │Architect│ │ Writer  │ │ Editor  │ │Translator│
-│  Agent  │ │  Agent  │ │ Agent   │ │  Agent  │ │  Agent   │
-│         │ │         │ │  (×N)   │ │         │ │  (×N)    │
-└────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬─────┘
-     │           │           │           │           │
-     ▼           ▼           ▼           ▼           ▼
-  Research    Outline    Chapters    Validated   Translated
-  Report       (ToC)    (parallel)  Chapters    Chapters
-                             │
-               ┌─────────────┼─────────────┐
-               ▼             ▼             ▼
-         ┌──────────┐  ┌──────────┐  ┌───────────┐
-         │  Image   │  │   PDF    │  │Web Viewer  │
-         │Generator │  │ Builder  │  │ Builder    │
-         │ (Gemini) │  │(WeasyPr.)│  │ (PDF.js)   │
-         └──────────┘  └──────────┘  └───────────┘
-```
+    O --> R["🔍 Researcher<br/>Agent"]
+    O --> A["📐 Architect<br/>Agent"]
+    O --> W["✍️ Writer<br/>Agent ×N"]
+    O --> Ed["🔎 Editor<br/>Agent"]
+    O --> Tr["🌐 Translator<br/>Agent ×N"]
 
-</div>
+    R --> RR["Research Report"]
+    A --> ToC["Outline (ToC)"]
+    W --> Ch["Chapters<br/>(parallel)"]
+    Ed --> VC["Validated<br/>Chapters"]
+    Tr --> TC["Translated<br/>Chapters"]
+
+    Ch --> IG["🎨 Image Generator<br/>(Gemini API)"]
+    Ch --> PB["📕 PDF Builder<br/>(WeasyPrint)"]
+    Ch --> WV["💻 Web Viewer<br/>(PDF.js)"]
+
+    style O fill:#1a1a2e,color:#fff,stroke:#0f3460
+    style R fill:#2563eb,color:#fff
+    style A fill:#2563eb,color:#fff
+    style W fill:#7c3aed,color:#fff
+    style Ed fill:#2563eb,color:#fff
+    style Tr fill:#7c3aed,color:#fff
+    style IG fill:#f59e0b,color:#000
+    style PB fill:#e11d48,color:#fff
+    style WV fill:#e11d48,color:#fff
+```
 
 <br>
 
@@ -162,23 +160,29 @@ Reusable capabilities invoked by agents and the orchestrator:
 
 ## 🔄 Pipeline
 
-```
- ┌──────────────────────────────────────────────────────────────┐
- │                                                              │
- │  Step 1   🔍 Research ──────────── Researcher Agent          │
- │  Step 2   📐 Outline Design ────── Architect Agent           │
- │           ══ Gate 1 ══════════════ Human Approval             │
- │  Step 3   ✍️ Chapter Writing ───── Writer Agent × N          │
- │  Step 4   🔎 Editing ───────────── Editor Agent              │
- │  Step 5   🎨 Image Generation ──── Gemini 3.1 Flash          │
- │  Step 6   🌐 Translation ──────── Translator Agent × N       │
- │  Step 7   📕 PDF Typesetting ──── WeasyPrint (B5)            │
- │  Step 8   💻 Web Viewer ────────── PDF.js + PyMuPDF          │
- │           ══ Gate 2 ══════════════ Human Approval             │
- │                                                              │
- └──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    S1["🔍 Research"] --> S2["📐 Outline"]
+    S2 --> G1{{"⏸ Gate 1"}}
+    G1 -->|Approve| S3["✍️ Write ×N"]
+    G1 -.->|Revise| S2
+    S3 --> S4["🔎 Edit"]
+    S4 --> S5["🎨 Images"]
+    S5 --> S6["🌐 Translate ×N"]
+    S6 --> S7["📕 PDF"]
+    S7 --> S8["💻 Viewer"]
+    S8 --> G2{{"⏸ Gate 2"}}
+    G2 -->|Approve| Done["✅ Done"]
+    G2 -.->|Revise| S4
+
+    style G1 fill:#f59e0b,color:#000,stroke:#f59e0b
+    style G2 fill:#f59e0b,color:#000,stroke:#f59e0b
+    style Done fill:#22c55e,color:#fff
+    style S6 stroke-dasharray:5 5
 ```
 
+> **Step 6 (Translate) is optional** — only runs if you request bilingual output
+>
 > **Gate 1 rejected?** &rarr; Re-run outline only (research preserved)
 >
 > **Gate 2 rejected?** &rarr; Re-edit only flagged chapters (partial regen)
