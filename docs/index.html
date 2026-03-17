@@ -29,6 +29,52 @@
   .bar button.on { background: #3b6de0; color: #fff; }
   .bar .pg { color: #888; min-width: 80px; text-align: center; font-size: 12px; }
 
+  /* ── Main layout ── */
+  .main { flex: 1; display: flex; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px; background: #161616; border-right: 1px solid #2a2a2a;
+    display: flex; flex-direction: column; flex-shrink: 0;
+    transition: margin-left 0.25s ease;
+    z-index: 15;
+  }
+  .sidebar.closed { margin-left: -260px; }
+  .sb-header {
+    padding: 12px 14px 8px; font-size: 11px; color: #666;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid #2a2a2a; flex-shrink: 0;
+  }
+  .sb-list {
+    flex: 1; overflow-y: auto; padding: 6px 0;
+  }
+  .sb-list::-webkit-scrollbar { width: 4px; }
+  .sb-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  .sb-item {
+    display: block; width: 100%;
+    padding: 8px 14px; border: none; background: none; color: #999;
+    font-size: 12px; text-align: left; cursor: pointer;
+    transition: all 0.15s; line-height: 1.4;
+  }
+  .sb-item:hover { background: #222; color: #ddd; }
+  .sb-item.active { background: #1e2a4a; color: #7aabff; border-left: 3px solid #3b6de0; }
+  .sb-item .ch-num {
+    display: inline-block; min-width: 28px;
+    color: #555; font-size: 11px; font-weight: 600;
+  }
+  .sb-item.active .ch-num { color: #5b8ddf; }
+  .sb-part {
+    padding: 10px 14px 4px; font-size: 10px; color: #444;
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;
+  }
+
+  /* Sidebar toggle button */
+  .sb-toggle {
+    background: none; border: none; color: #888; cursor: pointer;
+    font-size: 16px; padding: 2px 6px; margin-right: 8px;
+  }
+  .sb-toggle:hover { color: #ddd; }
+
   /* ── Viewer ── */
   .viewer {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -36,23 +82,18 @@
   }
 
   /* ── The book ── */
-  .book-wrap {
-    position: relative;
-    transform-style: preserve-3d;
-  }
+  .book-wrap { position: relative; transform-style: preserve-3d; }
   .book {
     display: flex; position: relative;
     box-shadow: 0 8px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
     border-radius: 0 3px 3px 0;
   }
-  /* Spine highlight */
   .book::before {
     content: ''; position: absolute; top: 0; left: -3px;
     width: 6px; height: 100%;
     background: linear-gradient(to right, #0a0a0a, #2a2a2a 40%, #1a1a1a);
     border-radius: 3px 0 0 3px; z-index: 6;
   }
-  /* Center gutter shadow */
   .book::after {
     content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
     width: 12px; height: 100%;
@@ -65,7 +106,6 @@
   .pg-box { position: relative; overflow: hidden; background: #fff; }
   .pg-box canvas { display: block; }
 
-  /* Inner edge shadows */
   .pg-l::after {
     content: ''; position: absolute; top: 0; right: 0;
     width: 25px; height: 100%;
@@ -78,7 +118,6 @@
     background: linear-gradient(to right, rgba(0,0,0,0.07), transparent);
     pointer-events: none; z-index: 2;
   }
-  /* Outer edge paper effect */
   .pg-r { border-right: 1px solid rgba(0,0,0,0.08); }
 
   /* ── Nav arrows ── */
@@ -95,7 +134,7 @@
   .arr-l { left: 12px; }
   .arr-r { right: 12px; }
 
-  /* ── Page turn animation ── */
+  /* ── Page turn ── */
   .turning-fwd .pg-r {
     animation: turnFwd 0.45s cubic-bezier(0.4, 0.0, 0.2, 1);
     transform-origin: left center;
@@ -131,6 +170,8 @@
 
   /* ── Mobile ── */
   @media (max-width: 900px) {
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 30; }
+    .sidebar.closed { margin-left: -260px; }
     .book::before, .book::after { display: none; }
     .pg-l::after, .pg-r::before { display: none; }
     .pg-r { border-right: none; }
@@ -142,7 +183,10 @@
 <div class="ld" id="ld"><div class="sp"></div><div>Loading...</div></div>
 
 <div class="bar">
-  <span class="t" id="tt">변호사를 위한 Claude Code 완전 정복</span>
+  <div style="display:flex;align-items:center">
+    <button class="sb-toggle" id="sbt" onclick="toggleSidebar()">&#9776;</button>
+    <span class="t" id="tt">변호사를 위한 Claude Code 완전 정복</span>
+  </div>
   <div class="c">
     <button id="bk" class="on" onclick="sw('ko')">한국어</button>
     <button id="be" onclick="sw('en')">English</button>
@@ -153,15 +197,24 @@
   </div>
 </div>
 
-<div class="viewer" id="vw">
-  <button class="arr arr-l" id="al" onclick="go(-1)">‹</button>
-  <div class="book-wrap">
-    <div class="book" id="bk_el">
-      <div class="pg-box pg-l" id="pl"><canvas id="cl"></canvas></div>
-      <div class="pg-box pg-r" id="pr"><canvas id="cr"></canvas></div>
-    </div>
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sb">
+    <div class="sb-header" id="sbh">Contents</div>
+    <div class="sb-list" id="sbl"></div>
   </div>
-  <button class="arr arr-r" id="ar" onclick="go(1)">›</button>
+
+  <!-- Viewer -->
+  <div class="viewer" id="vw">
+    <button class="arr arr-l" id="al" onclick="go(-1)">&#8249;</button>
+    <div class="book-wrap">
+      <div class="book" id="bk_el">
+        <div class="pg-box pg-l" id="pl"><canvas id="cl"></canvas></div>
+        <div class="pg-box pg-r" id="pr"><canvas id="cr"></canvas></div>
+      </div>
+    </div>
+    <button class="arr arr-r" id="ar" onclick="go(1)">&#8250;</button>
+  </div>
 </div>
 
 <script type="module">
@@ -169,83 +222,229 @@ const CDN='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155';
 const {getDocument,GlobalWorkerOptions}=await import(`${CDN}/pdf.min.mjs`);
 GlobalWorkerOptions.workerSrc=`${CDN}/pdf.worker.min.mjs`;
 
-let pdf,sp=0,np=0,zm=1,busy=0,mob=innerWidth<=900;
+let pdf,sp=0,np=0,zm=1,busy=0,mob=innerWidth<=900,lang='ko';
 const F={ko:'book_ko.pdf',en:'book_en.pdf'};
 const $=id=>document.getElementById(id);
 
-async function ld(l){
+/* ── Chapter index (extracted from PDF outline or hardcoded) ── */
+const TOC = {
+  ko: [
+    { part: 'Part I — 새로운 도구와의 만남' },
+    { ch: 1, title: 'ChatGPT를 넘어서', page: null },
+    { ch: 2, title: 'VS Code 설치와 첫 화면 익히기', page: null },
+    { ch: 3, title: '터미널 — 법원 서기에게 말 걸기', page: null },
+    { part: 'Part II — Claude Code 시작하기' },
+    { ch: 4, title: 'Claude Code 설치와 첫 대화', page: null },
+    { ch: 5, title: 'Claude Code 핵심 기능 마스터하기', page: null },
+    { ch: 6, title: '법률 업무를 위한 프롬프트 작성 기술', page: null },
+    { part: 'Part III — 에이전트의 세계' },
+    { ch: 7, title: 'CLAUDE.md — AI에게 업무 매뉴얼 만들어 주기', page: null },
+    { ch: 8, title: '에이전트 아키텍처 이해하기', page: null },
+    { ch: 9, title: 'Design Document 작성법', page: null },
+    { part: 'Part IV — 에이전트 만들기' },
+    { ch: 10, title: '에이전트 구축 Step 1 — 프로젝트 자동 생성', page: null },
+    { ch: 11, title: '에이전트 구축 Step 2 — Skills와 Subagents', page: null },
+    { ch: 12, title: '에이전트 구축 Step 3 — 테스트와 개선', page: null },
+    { part: 'Part V — 책임 있는 AI 활용' },
+    { ch: 13, title: '법률 윤리, AI 그리고 변호사의 미래', page: null },
+  ],
+  en: [
+    { part: 'Part I — Meeting the New Tool' },
+    { ch: 1, title: 'Beyond ChatGPT', page: null },
+    { ch: 2, title: 'Installing VS Code', page: null },
+    { ch: 3, title: 'Terminal — Talking to the Court Clerk', page: null },
+    { part: 'Part II — Getting Started with Claude Code' },
+    { ch: 4, title: 'Installing Claude Code', page: null },
+    { ch: 5, title: 'Mastering Core Features', page: null },
+    { ch: 6, title: 'Prompt Engineering for Legal Work', page: null },
+    { part: 'Part III — The World of Agents' },
+    { ch: 7, title: 'CLAUDE.md — Your AI\'s Manual', page: null },
+    { ch: 8, title: 'Agent Architecture', page: null },
+    { ch: 9, title: 'Writing a Design Document', page: null },
+    { part: 'Part IV — Building an Agent' },
+    { ch: 10, title: 'Agent Build Step 1 — Auto-Generation', page: null },
+    { ch: 11, title: 'Agent Build Step 2 — Skills & Subagents', page: null },
+    { ch: 12, title: 'Agent Build Step 3 — Test & Improve', page: null },
+    { part: 'Part V — Responsible AI Use' },
+    { ch: 13, title: 'Ethics, AI, and the Future of Law', page: null },
+  ]
+};
+
+/* ── Find chapter start pages by scanning PDF text ── */
+async function detectChapterPages() {
+  const toc = TOC[lang];
+  for (let p = 1; p <= Math.min(np, 30); p++) {
+    const page = await pdf.getPage(p);
+    const txt = await page.getTextContent();
+    const text = txt.items.map(i => i.str).join(' ');
+    for (const entry of toc) {
+      if (!entry.ch) continue;
+      // Match "제N장" or "Chapter N"
+      const patterns = [`제${entry.ch}장`, `Chapter ${entry.ch}`];
+      for (const pat of patterns) {
+        if (text.includes(pat) && entry.page === null) {
+          entry.page = p;
+        }
+      }
+    }
+  }
+  // Scan remaining pages for later chapters
+  for (const entry of toc) {
+    if (entry.ch && entry.page === null) {
+      for (let p = 30; p <= np; p++) {
+        const page = await pdf.getPage(p);
+        const txt = await page.getTextContent();
+        const text = txt.items.map(i => i.str).join(' ');
+        const patterns = [`제${entry.ch}장`, `Chapter ${entry.ch}`];
+        for (const pat of patterns) {
+          if (text.includes(pat) && entry.page === null) {
+            entry.page = p;
+          }
+        }
+        if (entry.page !== null) break;
+      }
+    }
+  }
+}
+
+/* ── Build sidebar ── */
+function buildSidebar() {
+  const list = $('sbl');
+  list.innerHTML = '';
+  $('sbh').textContent = lang === 'ko' ? '목차' : 'Contents';
+  for (const entry of TOC[lang]) {
+    if (entry.part) {
+      const div = document.createElement('div');
+      div.className = 'sb-part';
+      div.textContent = entry.part;
+      list.appendChild(div);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'sb-item';
+      btn.dataset.page = entry.page || 1;
+      btn.dataset.ch = entry.ch;
+      btn.innerHTML = `<span class="ch-num">${entry.ch}.</span> ${entry.title}`;
+      btn.onclick = () => jumpTo(parseInt(btn.dataset.page));
+      list.appendChild(btn);
+    }
+  }
+  updateActiveChapter();
+}
+
+function updateActiveChapter() {
+  const currentPage = mob ? sp + 1 : sp * 2 + 1;
+  const items = document.querySelectorAll('.sb-item');
+  let activeItem = null;
+  for (const item of items) {
+    const pg = parseInt(item.dataset.page);
+    item.classList.remove('active');
+    if (pg <= currentPage) activeItem = item;
+  }
+  if (activeItem) {
+    activeItem.classList.add('active');
+    activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+function jumpTo(page) {
+  if (!page || page < 1) return;
+  sp = mob ? page - 1 : Math.floor((page - 1) / 2);
+  anim('turning-fwd');
+  dr();
+  if (mob) toggleSidebar();
+}
+
+/* ── Sidebar toggle ── */
+window.toggleSidebar = () => {
+  $('sb').classList.toggle('closed');
+};
+
+/* ── Load ── */
+async function init(l) {
   $('ld').classList.remove('off');
-  try{pdf=await getDocument(F[l]).promise;np=pdf.numPages;sp=0;await dr();}
-  catch(e){$('ld').innerHTML=`<div style="color:#e55">${e.message}</div>`;}
+  try {
+    pdf = await getDocument(F[l]).promise;
+    np = pdf.numPages; sp = 0;
+    await detectChapterPages();
+    buildSidebar();
+    await dr();
+  } catch(e) {
+    $('ld').innerHTML = `<div style="color:#e55">${e.message}</div>`;
+  }
   $('ld').classList.add('off');
 }
 
-async function rp(n,cv){
-  if(n<1||n>np){cv.width=cv.height=0;cv.parentElement.style.display='none';return;}
-  cv.parentElement.style.display='';
-  const pg=await pdf.getPage(n),bv=pg.getViewport({scale:1});
-  const h=$('vw').clientHeight-28, s=(h/bv.height)*zm;
-  const vp=pg.getViewport({scale:s});
-  cv.width=vp.width;cv.height=vp.height;
-  await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+/* ── Render ── */
+async function rp(n, cv) {
+  if (n < 1 || n > np) { cv.width = cv.height = 0; cv.parentElement.style.display = 'none'; return; }
+  cv.parentElement.style.display = '';
+  const pg = await pdf.getPage(n), bv = pg.getViewport({ scale: 1 });
+  const h = $('vw').clientHeight - 28, s = (h / bv.height) * zm;
+  const vp = pg.getViewport({ scale: s });
+  cv.width = vp.width; cv.height = vp.height;
+  await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
 }
 
-async function dr(){
-  if(busy)return;busy=1;
-  if(mob){
-    $('pr').style.display='none';
-    await rp(sp+1,$('cl'));ui(sp+1,sp+1);
-  }else{
-    const l=sp*2+1,r=sp*2+2;$('pr').style.display='';
-    await Promise.all([rp(l,$('cl')),rp(r,$('cr'))]);
-    ui(l,Math.min(r,np));
+async function dr() {
+  if (busy) return; busy = 1;
+  if (mob) {
+    $('pr').style.display = 'none';
+    await rp(sp + 1, $('cl')); ui(sp + 1, sp + 1);
+  } else {
+    const l = sp * 2 + 1, r = sp * 2 + 2; $('pr').style.display = '';
+    await Promise.all([rp(l, $('cl')), rp(r, $('cr'))]);
+    ui(l, Math.min(r, np));
   }
-  busy=0;
+  updateActiveChapter();
+  busy = 0;
 }
 
-function ui(a,b){
-  $('pi').textContent=a===b?`${a} / ${np}`:`${a}–${b} / ${np}`;
-  $('al').style.visibility=sp===0?'hidden':'';
-  $('ar').style.visibility=sp>=(mob?np-1:Math.floor((np-1)/2))?'hidden':'';
+function ui(a, b) {
+  $('pi').textContent = a === b ? `${a} / ${np}` : `${a}–${b} / ${np}`;
+  $('al').style.visibility = sp === 0 ? 'hidden' : '';
+  $('ar').style.visibility = sp >= (mob ? np - 1 : Math.floor((np - 1) / 2)) ? 'hidden' : '';
 }
 
-window.go=d=>{
-  const mx=mob?np-1:Math.floor((np-1)/2);
-  if(d>0&&sp<mx){sp++;anim('turning-fwd');dr();}
-  if(d<0&&sp>0){sp--;anim('turning-bwd');dr();}
+/* ── Navigation ── */
+window.go = d => {
+  const mx = mob ? np - 1 : Math.floor((np - 1) / 2);
+  if (d > 0 && sp < mx) { sp++; anim('turning-fwd'); dr(); }
+  if (d < 0 && sp > 0) { sp--; anim('turning-bwd'); dr(); }
 };
 
-function anim(c){
-  const b=$('bk_el');b.classList.remove('turning-fwd','turning-bwd');
-  void b.offsetWidth;b.classList.add(c);
-  setTimeout(()=>b.classList.remove(c),450);
+function anim(c) {
+  const b = $('bk_el'); b.classList.remove('turning-fwd', 'turning-bwd');
+  void b.offsetWidth; b.classList.add(c);
+  setTimeout(() => b.classList.remove(c), 450);
 }
 
-document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();go(1);}
-  if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();go(-1);}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(-1); }
 });
-let tx=0;
-document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});
-document.addEventListener('touchend',e=>{
-  const d=e.changedTouches[0].clientX-tx;
-  if(Math.abs(d)>50)go(d<0?1:-1);
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const d = e.changedTouches[0].clientX - tx;
+  if (Math.abs(d) > 50) go(d < 0 ? 1 : -1);
 });
-$('vw').addEventListener('click',e=>{
-  if(e.target.closest('.arr'))return;
-  const r=$('vw').getBoundingClientRect(),x=e.clientX-r.left;
-  if(x<r.width*0.15)go(-1);else if(x>r.width*0.85)go(1);
+$('vw').addEventListener('click', e => {
+  if (e.target.closest('.arr')) return;
+  const r = $('vw').getBoundingClientRect(), x = e.clientX - r.left;
+  if (x < r.width * 0.15) go(-1); else if (x > r.width * 0.85) go(1);
 });
 
-window.zo=d=>{zm=Math.max(0.5,Math.min(2.5,zm+d*0.15));dr();};
-window.sw=l=>{
-  $('bk').classList.toggle('on',l==='ko');
-  $('be').classList.toggle('on',l==='en');
-  $('tt').textContent=l==='ko'?'변호사를 위한 Claude Code 완전 정복':'Mastering Claude Code for Lawyers';
-  ld(l);
+window.zo = d => { zm = Math.max(0.5, Math.min(2.5, zm + d * 0.15)); dr(); };
+window.sw = l => {
+  lang = l;
+  $('bk').classList.toggle('on', l === 'ko');
+  $('be').classList.toggle('on', l === 'en');
+  $('tt').textContent = l === 'ko' ? '변호사를 위한 Claude Code 완전 정복' : 'Mastering Claude Code for Lawyers';
+  init(l);
 };
-addEventListener('resize',()=>{mob=innerWidth<=900;dr();});
-ld('ko');
+addEventListener('resize', () => { mob = innerWidth <= 900; dr(); });
+
+init('ko');
 </script>
 </body>
 </html>
