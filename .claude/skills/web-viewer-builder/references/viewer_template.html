@@ -81,7 +81,7 @@ const $=id=>document.getElementById(id);
 // TOC extracted at build time by PyMuPDF — no client-side scanning needed
 const TOC_DATA={primary:{{TOC_PRIMARY}},secondary:{{TOC_SECONDARY}}};
 let toc=[];
-function buildSB(){const l=$('sbl');l.innerHTML='';$('sbh').textContent=TL[lang];if(!toc.length){l.innerHTML='<div style="padding:14px;color:#666;font-size:12px">Scanning...</div>';return;}for(const e of toc){const b=document.createElement('button');b.className='sb-item';b.dataset.page=e.p;b.innerHTML=`<span class="ch-num">${e.c}.</span> ${e.t}`;b.onclick=()=>jmp(e.p);l.appendChild(b);}upd();}
+function buildSB(){const l=$('sbl');l.innerHTML='';$('sbh').textContent=TL[lang];if(!toc.length){l.innerHTML='<div style="padding:14px;color:#666;font-size:12px">Scanning...</div>';return;}for(const e of toc){const b=document.createElement('button');b.className='sb-item';b.dataset.page=e.p;b.innerHTML=`<span class="ch-num">${e.ch}.</span> ${e.t}`;b.onclick=()=>jmp(e.p);l.appendChild(b);}upd();}
 function upd(){const cur=mob?sp+1:sp*2+2;let act=null;document.querySelectorAll('.sb-item').forEach(i=>{i.classList.remove('active');if(parseInt(i.dataset.page)<=cur)act=i;});if(act){act.classList.add('active');act.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function jmp(p){if(!p||p<1)return;sp=mob?p-1:Math.floor((p-1)/2);anim('turning-fwd');dr();if(mob)toggleSidebar();}
 window.toggleSidebar=()=>{$('sb').classList.toggle('closed');};
