@@ -78,55 +78,14 @@ const F={primary:'{{PRIMARY_PDF}}',secondary:'{{SECONDARY_PDF}}'};
 const T={primary:'{{TITLE}}',secondary:'{{TITLE_SECONDARY}}'};
 const TL={primary:'{{PRIMARY_TOC_LABEL}}',secondary:'{{SECONDARY_TOC_LABEL}}'};
 const $=id=>document.getElementById(id);
+// TOC extracted at build time by PyMuPDF — no client-side scanning needed
+const TOC_DATA={primary:{{TOC_PRIMARY}},secondary:{{TOC_SECONDARY}}};
 let toc=[];
-async function buildToc(){
-  toc=[];
-  // Strategy: chapter opening pages have the chapter number/title as the
-  // first significant text on the page, positioned in the upper portion.
-  // We look for items in the top 40% of the page that match "제N장" or "Chapter N".
-  for(let p=1;p<=np;p++){
-    try{
-      const pg=await pdf.getPage(p);
-      const vp=pg.getViewport({scale:1});
-      const pageH=vp.height;
-      const tc=await pg.getTextContent();
-      // Only look at text items in the top 40% of the page
-      const topItems=tc.items.filter(it=>it.transform&&it.transform[5]>pageH*0.6);
-      if(!topItems.length)continue;
-      // Build text from top items only
-      const topText=topItems.map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
-      // Match chapter heading patterns
-      let m=topText.match(/제(\d+)장[:\s.\-—]+(.{2,50})/);
-      if(!m) m=topText.match(/Chapter\s+(\d+)[:\s.\-—]+(.{2,50})/i);
-      if(!m){
-        // Some pages just have "Chapter N" as a standalone heading
-        m=topText.match(/^Chapter\s+(\d+)$/i);
-        if(m) m=[m[0],m[1],''];
-      }
-      if(!m){
-        m=topText.match(/^제(\d+)장$/);
-        if(m) m=[m[0],m[1],''];
-      }
-      if(m){
-        const cn=parseInt(m[1]);
-        // Skip if this is in the TOC pages (first ~12 pages)
-        if(p<=12)continue;
-        // Skip if we already have this chapter
-        if(toc.some(e=>e.c===cn))continue;
-        let title=m[0].trim();
-        if(title.length>55)title=title.slice(0,53)+'...';
-        toc.push({c:cn,t:title,p:p});
-      }
-    }catch(e){}
-  }
-  toc.sort((a,b)=>a.c-b.c);
-  console.log('TOC:',toc.map(e=>'Ch'+e.c+'=p'+e.p).join(', '));
-}
 function buildSB(){const l=$('sbl');l.innerHTML='';$('sbh').textContent=TL[lang];if(!toc.length){l.innerHTML='<div style="padding:14px;color:#666;font-size:12px">Scanning...</div>';return;}for(const e of toc){const b=document.createElement('button');b.className='sb-item';b.dataset.page=e.p;b.innerHTML=`<span class="ch-num">${e.c}.</span> ${e.t}`;b.onclick=()=>jmp(e.p);l.appendChild(b);}upd();}
 function upd(){const cur=mob?sp+1:sp*2+2;let act=null;document.querySelectorAll('.sb-item').forEach(i=>{i.classList.remove('active');if(parseInt(i.dataset.page)<=cur)act=i;});if(act){act.classList.add('active');act.scrollIntoView({block:'nearest',behavior:'smooth'});}}
 function jmp(p){if(!p||p<1)return;sp=mob?p-1:Math.floor((p-1)/2);anim('turning-fwd');dr();if(mob)toggleSidebar();}
 window.toggleSidebar=()=>{$('sb').classList.toggle('closed');};
-async function init(l){$('ld').classList.remove('off');try{pdf=await getDocument(F[l]).promise;np=pdf.numPages;sp=0;await buildToc();buildSB();await dr();}catch(e){$('ld').innerHTML=`<div style="color:#e55">${e.message}</div>`;}$('ld').classList.add('off');}
+async function init(l){$('ld').classList.remove('off');try{pdf=await getDocument(F[l]).promise;np=pdf.numPages;sp=0;toc=TOC_DATA[l]||[];buildSB();await dr();}catch(e){$('ld').innerHTML=`<div style="color:#e55">${e.message}</div>`;}$('ld').classList.add('off');}
 async function rp(n,cv){if(n<1||n>np){cv.width=cv.height=0;cv.parentElement.style.display='none';return;}cv.parentElement.style.display='';const pg=await pdf.getPage(n),bv=pg.getViewport({scale:1});const h=$('vw').clientHeight-28,s=(h/bv.height)*zm;const vp=pg.getViewport({scale:s});cv.width=vp.width;cv.height=vp.height;await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;}
 async function dr(){if(busy)return;busy=1;if(mob){$('pr').style.display='none';await rp(sp+1,$('cl'));ui(sp+1,sp+1);}else{const l=sp*2+1,r=sp*2+2;$('pr').style.display='';await Promise.all([rp(l,$('cl')),rp(r,$('cr'))]);ui(l,Math.min(r,np));}upd();busy=0;}
 function ui(a,b){$('pi').textContent=a===b?`${a} / ${np}`:`${a}-${b} / ${np}`;$('al').style.visibility=sp===0?'hidden':'';$('ar').style.visibility=sp>=(mob?np-1:Math.floor((np-1)/2))?'hidden':'';}
