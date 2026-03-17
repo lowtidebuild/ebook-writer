@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Generate a single-page HTML ebook viewer from markdown chapters. The viewer provides a polished, book-like reading experience with page-flip animation, bilingual support (Korean/English), and full mobile responsiveness. The output is a self-contained static site deployable to GitHub Pages with zero external dependencies.
+Generate a PDF.js-based web ebook viewer from the typeset PDFs. The viewer renders the actual PDF pages with a two-page book spread layout, page-turn animation, chapter navigation sidebar, and bilingual language toggle. Deployable to GitHub Pages.
 
 ## When to Use
 
-**Step 8** of the ebook pipeline — after chapters have been written in both languages and images have been generated. This skill takes the finalized chapter markdown files and produces a deployable web viewer.
+**Step 8** of the ebook pipeline — after PDFs have been generated in Step 7. This skill takes the finalized PDF files and produces a deployable web viewer.
 
 ## Script
 
@@ -16,49 +16,65 @@ Generate a single-page HTML ebook viewer from markdown chapters. The viewer prov
 
 ```bash
 python3 build_viewer.py \
-  --chapters-ko output/chapters/ko/ \
-  --chapters-en output/chapters/en/ \
-  --images output/images/ \
+  --pdf-primary output/final/book_ko.pdf \
+  --pdf-secondary output/final/book_en.pdf \
   --output output/web-viewer/ \
   --template .claude/skills/web-viewer-builder/references/viewer_template.html \
-  --title "Book Title"
+  --title "Book Title" \
+  --title-secondary "Book Title (EN)" \
+  --primary-lang ko \
+  --secondary-lang en
 ```
 
 ### Arguments
 
 | Argument | Required | Description |
 |---|---|---|
-| `--chapters-ko` | Yes | Directory containing Korean chapter `.md` files |
-| `--chapters-en` | Yes | Directory containing English chapter `.md` files |
-| `--images` | Yes | Directory containing book images |
-| `--output` | Yes | Output directory for the generated web viewer |
-| `--template` | Yes | Path to the HTML template file |
-| `--title` | Yes | Book title displayed in the viewer |
+| `--pdf-primary` | Yes | Path to primary language PDF |
+| `--pdf-secondary` | No | Path to secondary language PDF (falls back to primary) |
+| `--output` | Yes | Output directory for the web viewer |
+| `--template` | Yes | Path to viewer_template.html |
+| `--title` | Yes | Book title (primary language) |
+| `--title-secondary` | No | Book title (secondary language) |
+| `--primary-lang` | No | Primary language code, default `ko` |
+| `--secondary-lang` | No | Secondary language code, default `en` |
+
+## How It Works
+
+1. **Build time**: PyMuPDF scans both PDFs for chapter headings (font size >= 14pt in top 40% of page)
+2. **Build time**: Chapter-to-page mapping is extracted and embedded as JSON in the HTML
+3. **Runtime**: PDF.js loads and renders the PDF pages on canvas elements
+4. **Runtime**: Sidebar is populated instantly from the embedded JSON (no client-side scanning)
 
 ## Features
 
-- **Page-flip animation**: Smooth CSS translateX transitions (300ms ease-in-out) for natural page turning
-- **KO/EN language toggle**: Switch between Korean and English content while maintaining page position; preference saved in localStorage
-- **Table of contents sidebar**: Collapsible chapter list with click-to-jump navigation
-- **Keyboard navigation**: Left/Right arrow keys for page turning
-- **Touch navigation**: Swipe left/right on mobile devices; tap page edges to navigate
-- **Mobile responsive**: Stacked layout with touch-friendly buttons on small screens
-- **Zero external dependencies**: Vanilla HTML, CSS, and JavaScript only
-- **GitHub Pages deployable**: Static output directory ready for deployment
+- **PDF.js rendering**: Actual typeset PDF rendered at full quality
+- **Two-page book spread**: Left/right pages side-by-side with spine shadow and gutter effects
+- **Page-turn animation**: 3D rotateY with shadow for book-like feel
+- **Chapter sidebar**: Build-time extracted TOC with click-to-jump, active chapter highlighting
+- **Language toggle**: Switch between primary/secondary PDF
+- **Zoom controls**: Scale up/down the rendered pages
+- **Keyboard navigation**: Left/Right arrow keys
+- **Touch navigation**: Swipe left/right on mobile
+- **Mobile responsive**: Single-page mode on small screens
 
-## Template
+## Template Placeholders
 
-The viewer template is located at `references/viewer_template.html`. It is a fully self-contained single-page application with inline CSS and JS. The build script injects content into the following placeholders:
-
-- `{{TITLE}}` — Book title
-- `{{TOC_ITEMS}}` — Generated table of contents HTML
-- `{{PAGES}}` — All page `<div>` elements with chapter content
-- `{{TOTAL_PAGES_KO}}` — Total number of Korean pages
-- `{{TOTAL_PAGES_EN}}` — Total number of English pages
+| Placeholder | Description |
+|---|---|
+| `{{TITLE}}` | Book title (primary) |
+| `{{TITLE_SECONDARY}}` | Book title (secondary) |
+| `{{PRIMARY_PDF}}` | Primary PDF filename |
+| `{{SECONDARY_PDF}}` | Secondary PDF filename |
+| `{{PRIMARY_LABEL}}` | Primary language button label (e.g., "한국어") |
+| `{{SECONDARY_LABEL}}` | Secondary language button label (e.g., "English") |
+| `{{PRIMARY_TOC_LABEL}}` | TOC header label (e.g., "목차") |
+| `{{SECONDARY_TOC_LABEL}}` | TOC header label (e.g., "Contents") |
+| `{{TOC_PRIMARY}}` | Chapter TOC JSON for primary language |
+| `{{TOC_SECONDARY}}` | Chapter TOC JSON for secondary language |
 
 ## Dependencies
 
 - Python 3.8+
-- `markdown` (Python library for converting `.md` to HTML)
-
-No frontend dependencies. The output HTML is entirely self-contained.
+- `pymupdf` (PyMuPDF — for build-time chapter page extraction)
+- PDF.js loaded from CDN at runtime (no local install needed)
