@@ -1,16 +1,15 @@
 # Output artifacts (pipeline results - not source code)
-output/research/
-output/outline/
-output/chapters/
-output/images/
-output/edit/
-output/final/
-output/web-viewer/
-output/logs/
-output/pipeline_state.json
+# Keep directory structure (.gitkeep) but ignore all generated content
+output/**
+!output/**/
+!output/**/.gitkeep
 
 # Design doc (internal reference only)
 ebook-generation-agent-design.md
+
+# User-provided reference materials (may contain proprietary/sensitive content)
+input/references/*.docx
+input/references/*.pdf
 
 # Python
 __pycache__/
