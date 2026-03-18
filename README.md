@@ -56,12 +56,12 @@
 ```
 You say:    /generate "Claude Code for Lawyers" --plugin legal --author "Author"
 
-You get:    📄 book.pdf       (250+ page typeset book)
+You get:    📄 book.pdf       (250+ page typeset book in your input language)
             🌐 web-viewer/    (browser-based reader with page-flip)
-            📄 book_en.pdf    (translated version — only if you want it)
+            📄 book_xx.pdf    (translated version — only if you want it)
 ```
 
-Language is **auto-detected** from your input. Translation is **optional** — the system asks if you need it.
+Language is **auto-detected** from your input (Korean input → Korean book, English input → English book). Translation is **optional** — the system asks if you need it.
 
 The pipeline runs automatically with only **two human checkpoints**:
 
