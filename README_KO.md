@@ -17,7 +17,7 @@
 [![PDF Engine](https://img.shields.io/badge/PDF-WeasyPrint-2563eb?style=flat-square)](https://weasyprint.org/)
 [![Images](https://img.shields.io/badge/Images-Gemini_API-f59e0b?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Viewer](https://img.shields.io/badge/Viewer-PDF.js-e11d48?style=flat-square)](https://mozilla.github.io/pdf.js/)
-[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-22c55e?style=flat-square)](LICENSE)
 
 [**English**](README.md) ·
 [**결과물 보기**](https://lowtidebuild.github.io/ebook-writer/) ·
@@ -335,6 +335,6 @@ GEMINI_API_KEY=your-key-here
 
 **Built with [Claude Code](https://claude.ai/claude-code)**
 
-MIT License
+Apache License 2.0
 
 </div>
