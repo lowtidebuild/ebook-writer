@@ -41,6 +41,8 @@
 
 *PDF.js viewer &bull; Two-page spread &bull; Chapter sidebar &bull; KO/EN toggle*
 
+[**Korean PDF**](https://drive.google.com/file/d/1BfSJ9HRZkJq_Qrzl7S9X2nGAHxNncUlc/view?usp=sharing) · [**English PDF**](https://drive.google.com/file/d/1_zzj7sucZNPJC870FPDv0_O0YY1L8OGa/view?usp=sharing)
+
 </div>
 
 <br>

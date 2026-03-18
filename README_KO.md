@@ -41,6 +41,8 @@
 
 *PDF.js 뷰어 &bull; 2페이지 펼침 &bull; 챕터 사이드바 &bull; 한/영 전환*
 
+[**한국어 PDF 원본**](https://drive.google.com/file/d/1BfSJ9HRZkJq_Qrzl7S9X2nGAHxNncUlc/view?usp=sharing) · [**English PDF**](https://drive.google.com/file/d/1_zzj7sucZNPJC870FPDv0_O0YY1L8OGa/view?usp=sharing)
+
 </div>
 
 <br>
