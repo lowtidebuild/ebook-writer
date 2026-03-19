@@ -485,7 +485,7 @@ def main(argv: list[str] | None = None) -> None:
         chapter_sections.append(wrap_chapter(ch_html, chapter_nums[idx]))
 
     # 7. Render cover page.
-    date_str = datetime.now().strftime("%Y-%m-%d")
+    date_str = "2026. 3. 19. (v2)"
     cover_html = render_cover(
         template_path=args.cover,
         title=args.title,
