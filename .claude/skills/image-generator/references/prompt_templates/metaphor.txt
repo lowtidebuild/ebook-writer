@@ -1,0 +1,8 @@
+A minimal, elegant illustration using visual metaphor to explain an abstract concept. {description}
+
+Layout: Centered composition with a single clear focal point. Simple scene with minimal elements — only what's needed to convey the concept.
+Style: Modern flat illustration, clean geometric shapes, subtle shadows for depth. No clipart, no cartoon style. Professional and sophisticated.
+Colors: Primary blue (#2563EB), gray (#6B7280), white background. One accent color for the key element.
+Text: Minimal or no text labels. The image should be self-explanatory.
+Aspect ratio: 16:9 landscape, 1024x576px minimum.
+Quality: Professional book-quality illustration, suitable for print.

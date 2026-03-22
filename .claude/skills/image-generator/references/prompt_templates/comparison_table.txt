@@ -1,0 +1,8 @@
+A visual comparison chart showing differences and similarities between items. {description}
+
+Layout: Grid or side-by-side layout with clear column/row headers. Check marks and X marks for feature comparison if applicable.
+Style: Clean table design with alternating row colors for readability. Minimal borders.
+Colors: Primary blue (#2563EB) for headers, light gray for alternating rows, white background. Green for positive, red for negative indicators.
+Text: Korean labels, clean sans-serif font, concise cell content.
+Aspect ratio: 16:9 landscape, 1024x576px minimum.
+Quality: Professional book-quality illustration, suitable for print.

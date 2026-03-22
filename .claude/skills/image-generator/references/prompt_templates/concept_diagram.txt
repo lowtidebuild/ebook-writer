@@ -1,0 +1,8 @@
+A clean, professional infographic showing the conceptual relationship between key elements. {description}
+
+Layout: Node-and-edge diagram with labeled connections. Central concept in the middle, related concepts branching outward.
+Style: Modern flat design, clean lines, minimal decoration.
+Colors: Primary blue (#2563EB), gray (#6B7280), white background. Accent colors for emphasis.
+Text: Korean labels, clean sans-serif font, 2-4 words per label maximum.
+Aspect ratio: 16:9 landscape, 1024x576px minimum.
+Quality: Professional book-quality illustration, suitable for print.

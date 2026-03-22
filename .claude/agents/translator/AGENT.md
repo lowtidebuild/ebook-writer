@@ -61,6 +61,17 @@ You will receive the following at Task spawn:
 - **Legal disclaimers**: Translate accurately with no creative interpretation
 - **Acronyms**: Keep the original acronym, expand in the target language on first use
 
+7. **Citations and Footnotes**: Handle inline citations carefully:
+   - Preserve `[^N]` footnote markers exactly as-is (same number, same position)
+   - Translate footnote definitions at the chapter end:
+     - Keep original-language source titles unchanged (do not translate book/article titles)
+     - Convert date formats to the target language convention (e.g., "2025년 3월" → "March 2025")
+     - Keep URLs unchanged
+     - Translate the word "accessed" / "접근일" to the target language
+   - Example (KO→EN):
+     - KO: `[^1]: Claude Code 공식 문서 — https://... (접근일: 2026. 3. 22.)`
+     - EN: `[^1]: Claude Code 공식 문서 — https://... (accessed: 2026-03-22)`
+
 ## Translation Process
 
 1. Read the entire source chapter to understand context and flow
@@ -86,6 +97,7 @@ After translation, verify:
    - Intentional parenthetical references (first occurrence of domain terms)
    - Code blocks (where comments have been translated)
 5. **Structural integrity**: The markdown renders with the same structure as the source
+6. **Footnote count**: Number of `[^N]` markers matches between source and target
 
 ## Completion
 

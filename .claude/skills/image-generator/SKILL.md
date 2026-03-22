@@ -6,7 +6,7 @@ Extract `[IMAGE: ...]` markers from generated chapter files, generate matching i
 
 ## Pipeline
 
-The skill operates as a 3-step script pipeline executed in order:
+The skill operates as a 4-step script pipeline executed in order:
 
 ### Step 1: Extract Markers (`extract_markers.py`)
 
@@ -16,9 +16,20 @@ Scans all `.md` chapter files for `[IMAGE: description]` patterns and produces a
 python3 scripts/extract_markers.py output/chapters/ko/ output/images/image_manifest.json
 ```
 
-Between Step 1 and Step 2 the agent should review the manifest and fill in the `prompt` field for each entry. The prompt should follow the style guide in `references/image_style_guide.md`. Entries left with `"prompt": null` will be skipped during generation.
+### Step 2: Classify & Generate Prompts (`generate_prompts.py`)
 
-### Step 2: Generate Images (`generate_images.py`)
+The orchestrator first classifies each marker's `image_type` (concept_diagram, process_flow, comparison_table, architecture, metaphor) based on the description. Then `generate_prompts.py` applies type-specific prompt templates from `references/prompt_templates/` to generate Gemini-compatible prompts automatically.
+
+```bash
+python3 scripts/generate_prompts.py \
+  --manifest output/images/image_manifest.json \
+  --templates references/prompt_templates/ \
+  --style-guide references/image_style_guide.md
+```
+
+This replaces the previous manual prompt writing step. Template files: `concept_diagram.txt`, `process_flow.txt`, `comparison_table.txt`, `architecture.txt`, `metaphor.txt`, `generic.txt` (fallback).
+
+### Step 3: Generate Images (`generate_images.py`)
 
 Reads the manifest, calls the Gemini image generation API for every pending entry that has a non-null prompt, saves the resulting PNG, and updates each entry's status to `completed` or `failed`.
 
@@ -28,7 +39,11 @@ python3 scripts/generate_images.py output/images/image_manifest.json
 
 Requires the `GEMINI_API_KEY` environment variable. The model defaults to `imagen-3.0-generate-002` and can be overridden with the `IMAGE_MODEL` environment variable.
 
-### Step 3: Insert Images (`insert_images.py`)
+**Step 3.5: Quality Review** (orchestrator-driven, for `architecture` and `process_flow` types only)
+
+The orchestrator reads each generated image and evaluates it against the style guide (score 1-10). Images scoring below 7 get their prompt revised and regenerated (max 2 retries). Results are recorded in the manifest as `quality_score` and `review_notes`.
+
+### Step 4: Insert Images (`insert_images.py`)
 
 Replaces every `[IMAGE: ...]` marker in the chapter files with either the generated image link or a failure placeholder.
 

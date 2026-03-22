@@ -1,0 +1,7 @@
+A clean, professional infographic. {description}
+
+Style: Modern flat design, minimal decoration, clean lines.
+Colors: Primary blue (#2563EB), gray (#6B7280), white background.
+Text: Korean labels if needed, clean sans-serif font.
+Aspect ratio: 16:9 landscape, 1024x576px minimum.
+Quality: Professional book-quality illustration, suitable for print.

@@ -57,9 +57,9 @@ Do NOT use the system `python3` — always use `.venv/bin/python3` to ensure dep
 
 | Agent | File | Step | Input | Output |
 |-------|------|------|-------|--------|
-| Researcher | `.claude/agents/researcher/AGENT.md` | 1 | Topic + plugin paths + reference paths | `output/research/research_report.md` |
+| Researcher | `.claude/agents/researcher/AGENT.md` | 1 | Topic + plugin paths + reference paths | `output/research/research_report.md` + `verification_report.json` + `citations.json` |
 | Architect | `.claude/agents/architect/AGENT.md` | 2 | Research report path + plugin criteria | `output/outline/table_of_contents.md` |
-| Writer (×N) | `.claude/agents/writer/AGENT.md` | 3 | Chapter assignment + language + paths | `output/chapters/{primary}/ch{NN}_{slug}.md` |
+| Writer (×N) | `.claude/agents/writer/AGENT.md` | 3 | Chapter assignment + language + paths + citations.json | `output/chapters/{primary}/ch{NN}_{slug}.md` |
 | Editor | `.claude/agents/editor/AGENT.md` | 4 | All chapter paths + outline + plugin criteria | Revised chapters + `output/edit/edit_report.md` |
 | Translator (×N) | `.claude/agents/translator/AGENT.md` | 6 | Source chapter + source/target language | `output/chapters/{secondary}/ch{NN}_{slug}.md` |
 
@@ -88,11 +88,11 @@ All state is tracked in `output/pipeline_state.json`. This file is the single so
   "gate2_feedback": null,
   "chapters": [],
   "step_artifacts": {
-    "step_1": { "name": "research", "status": "pending", "output": "output/research/research_report.md", "retry_count": 0, "completed_at": null },
+    "step_1": { "name": "research", "status": "pending", "output": "output/research/research_report.md", "verification_output": "output/research/verification_report.json", "citations_output": "output/research/citations.json", "verification_rate": null, "retry_count": 0, "completed_at": null },
     "step_2": { "name": "outline", "status": "pending", "output": "output/outline/table_of_contents.md", "retry_count": 0, "completed_at": null },
     "step_3": { "name": "chapter_writing", "status": "pending", "output": "output/chapters/{primary_language}/", "retry_count": 0, "completed_at": null },
     "step_4": { "name": "editing", "status": "pending", "output": "output/edit/edit_report.md", "retry_count": 0, "completed_at": null },
-    "step_5": { "name": "image_generation", "status": "pending", "output": "output/images/", "retry_count": 0, "completed_at": null },
+    "step_5": { "name": "image_generation", "status": "pending", "output": "output/images/", "quality_review_status": "pending", "avg_quality_score": null, "retry_count": 0, "completed_at": null },
     "step_6": { "name": "translation", "status": "pending", "output": "output/chapters/{secondary_language}/", "retry_count": 0, "completed_at": null },
     "step_7": { "name": "pdf_typesetting", "status": "pending", "output": "output/final/", "retry_count": 0, "completed_at": null },
     "step_8": { "name": "web_viewer", "status": "pending", "output": "output/web-viewer/", "retry_count": 0, "completed_at": null }
@@ -128,6 +128,12 @@ When the `/generate` command is invoked:
 ```
 IF output/pipeline_state.json exists:
   Read the state file
+  Backfill any missing v3 fields with defaults:
+    - step_1.verification_output → null
+    - step_1.citations_output → null
+    - step_1.verification_rate → null
+    - step_5.quality_review_status → null
+    - step_5.avg_quality_score → null
   Validate all completed step artifacts exist on disk
   IF any completed step's artifact is missing:
     Reset that step and all subsequent steps to "pending"
@@ -164,7 +170,7 @@ Create output/pipeline_state.json with:
 
 ## Step Execution Protocol
 
-### Step 1: Research
+### Step 1: Research + Cross-Verification
 
 1. Spawn a Task with the Researcher Agent:
    ```
@@ -174,10 +180,19 @@ Create output/pipeline_state.json with:
    Plugin research sources: .claude/plugins/{state.plugin}/research_sources.md (if plugin exists)
    Reference materials directory: input/references/
    Output: output/research/research_report.md
+   Additional outputs: output/research/verification_report.json, output/research/citations.json
    ```
 2. Wait for Task completion
-3. Verify `output/research/research_report.md` exists and is non-empty
-4. Update state: step_1.status = "completed", last_completed_step = 1
+3. Verify all three output files exist and are non-empty:
+   - `output/research/research_report.md`
+   - `output/research/verification_report.json`
+   - `output/research/citations.json`
+4. Read `verification_report.json` and check `verification_rate`:
+   - If rate ≥ 0.70: proceed normally
+   - If rate < 0.70: log warning, but proceed (Researcher already retried internally)
+5. Update state: step_1.status = "completed", step_1.verification_rate = {rate from report}, last_completed_step = 1
+
+**Note**: If `verification_report.json` or `citations.json` are missing (e.g., v2 state file), treat as optional and proceed. These files are required for new pipelines but not for resumed v2 pipelines.
 
 ### Step 2: Outline Design
 
@@ -231,6 +246,8 @@ This step uses dependency-wave-based parallel execution:
       {paste the relevant outline section for this chapter}
 
       Research report: output/research/research_report.md
+      Citations database: output/research/citations.json
+      Verification report: output/research/verification_report.json
       Dependency chapter files: {list paths of completed dependency chapters}
       Plugin: .claude/plugins/{state.plugin}/PLUGIN.md (if plugin exists)
       Target audience: {from plugin or "general readers"}
@@ -250,8 +267,16 @@ This step uses dependency-wave-based parallel execution:
    Chapter directory: output/chapters/{state.primary_language}/
    Outline: output/outline/table_of_contents.md
    Research report: output/research/research_report.md
+   Citations database: output/research/citations.json
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
    Output: Revised chapter files + output/edit/edit_report.md
+
+   Pre-editing automated checks (run before spawning Editor):
+   1. Cross-reference validation:
+      python3 .claude/skills/code-example-validator/scripts/validate_references.py output/chapters/{state.primary_language}/
+   2. Code execution validation:
+      python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute output/chapters/{state.primary_language}/
+   Include results of both checks in the Editor's input.
    ```
    If Gate 2 was previously rejected, append: `Focus on these chapters only: {list of flagged chapters from gate2_feedback}`
 2. Wait for Task completion
@@ -268,27 +293,50 @@ This step uses dependency-wave-based parallel execution:
    - **If no blocking issues**:
      - Update state: step_4.status = "completed", last_completed_step = 4
 
-### Step 5: Image Generation
+### Step 5: Image Generation (4-step sub-pipeline)
 
-1. Run marker extraction:
+1. **Extract markers**:
    ```bash
    python3 .claude/skills/image-generator/scripts/extract_markers.py output/chapters/{state.primary_language}/ output/images/image_manifest.json
    ```
-2. Read `output/images/image_manifest.json`
-3. For each marker entry, write an image generation prompt:
-   - Read the marker's description
-   - Write a detailed Gemini-compatible image prompt matching the book's visual style
-   - Update the manifest entry with the prompt
-4. Run image generation:
+
+2. **Classify and generate prompts**:
+   - Read `output/images/image_manifest.json`
+   - For each marker entry, classify the image type based on the description:
+     - `concept_diagram`: conceptual relationships (nodes, edges)
+     - `process_flow`: sequential steps, workflows, flowcharts
+     - `comparison_table`: side-by-side comparisons, grids
+     - `architecture`: system architecture, block diagrams
+     - `metaphor`: analogies, minimal scene illustrations
+   - Update the manifest entry with `image_type` field
+   - Run prompt generation:
+     ```bash
+     python3 .claude/skills/image-generator/scripts/generate_prompts.py \
+       --manifest output/images/image_manifest.json \
+       --templates .claude/skills/image-generator/references/prompt_templates/ \
+       --style-guide .claude/skills/image-generator/references/image_style_guide.md
+     ```
+   This replaces the previous manual prompt writing by the orchestrator.
+
+3. **Generate images**:
    ```bash
    python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
    ```
-5. Run marker replacement:
+
+4. **Quality review** (for `architecture` and `process_flow` types only):
+   - Read each generated image file for these types
+   - Evaluate against the style guide (1-10 score): style consistency, text readability, conceptual accuracy
+   - If score < 7: revise the prompt and regenerate (max 2 retries)
+   - Update manifest with `quality_score` and `review_notes`
+   - Update state: step_5.avg_quality_score = average score
+
+5. **Insert images**:
    ```bash
    python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/{state.primary_language}/
    ```
+
 6. Verify no `[IMAGE: ...]` markers remain in chapter files
-7. Update state: step_5.status = "completed", last_completed_step = 5
+7. Update state: step_5.status = "completed", step_5.quality_review_status = "completed", last_completed_step = 5
 
 **Note**: Image generation failures are **non-blocking**. Failed images get placeholder text. The pipeline continues regardless.
 

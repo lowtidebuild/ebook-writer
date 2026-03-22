@@ -1,0 +1,8 @@
+A system architecture block diagram showing components and their interactions. {description}
+
+Layout: Layered architecture diagram with clear component boundaries. External systems at the edges, core components in the center. Data flow arrows between components.
+Style: Modern flat design with rounded rectangles for components, dashed borders for external systems, solid borders for internal components.
+Colors: Primary blue (#2563EB) for core components, teal (#0D9488) for external systems, gray (#6B7280) for infrastructure, white background.
+Text: Korean labels, clean sans-serif font, component names and brief descriptions.
+Aspect ratio: 16:9 landscape, 1024x576px minimum.
+Quality: Professional book-quality illustration, suitable for print.

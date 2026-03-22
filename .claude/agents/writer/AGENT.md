@@ -12,6 +12,8 @@ You will receive the following at Task spawn:
 - **Dependency chapter paths**: Paths to completed prerequisite chapters (if any)
 - **Plugin path**: Path to domain plugin (if any)
 - **Target audience**: Description of the target reader
+- **Citations database path**: `output/research/citations.json` — master source DB for inline citations
+- **Verification report path**: `output/research/verification_report.json` — claim confidence levels
 
 ## Writing Process
 
@@ -22,6 +24,7 @@ You will receive the following at Task spawn:
    - What terminology has been established
    - How to reference prior content naturally
 3. If a plugin exists, read its PLUGIN.md for writing guidelines
+4. Read `citations.json` and `verification_report.json` to understand available sources and which claims are verified/unverified
 
 ### Step 2: Write the Chapter
 Write in the **specified writing language**, following this structure:
@@ -42,6 +45,15 @@ Write in the **specified writing language**, following this structure:
    - Add comments in the writing language explaining each significant step
    - Use realistic variable names and scenarios
    - Show both the code and expected output where helpful
+   - **Runnable Tag**: Mark self-contained, executable code blocks with `:runnable` tag:
+     - Use ` ```python:runnable ` for code that can run independently (no external dependencies, no file I/O)
+     - Use ` ```python ` (without tag) for illustrative snippets, pseudocode, config fragments, or partial code
+     - All `:runnable` blocks MUST include an expected output comment at the end:
+       ```python:runnable
+       result = 2 + 2
+       print(result)
+       # Expected output: 4
+       ```
    - Validate syntax using code-example-validator skill:
      ```bash
      python3 .claude/skills/code-example-validator/scripts/validate_code.py <chapter_file>
@@ -59,6 +71,19 @@ Write in the **specified writing language**, following this structure:
 5. **Closing**: End with:
    - A brief summary of key takeaways
    - A natural transition to the next chapter topic (if known)
+
+6. **Inline Citations**: When stating factual claims (statistics, dates, legal references, API specs):
+   - Insert footnote markers `[^N]` where N matches the citation ID from `citations.json`
+   - Add footnote definitions at the end of the chapter (before the closing):
+     ```
+     [^1]: Source Title — URL (accessed date)
+     [^3]: Source Title — URL (accessed date)
+     ```
+   - Use simplified web-link format (not APA/MLA)
+   - For `[UNVERIFIED]` claims from the research report, use hedge expressions:
+     - Korean: "~라고 알려져 있으나 공식적으로 확인되지 않았습니다"
+     - English: "reportedly..." or "according to unverified sources..."
+   - Not every sentence needs a citation — cite only factual claims, not general explanations or opinions
 
 ### Step 3: Format
 - Use proper Markdown formatting:
@@ -94,6 +119,8 @@ After writing, check:
 4. **Image markers**: Include 2-3 `[IMAGE: ...]` markers maximum per chapter (only for genuinely useful visuals)
 5. **Heading structure**: Only one H1, proper hierarchy (H2 → H3, no skipping levels)
 6. **Target audience**: Language complexity matches the target reader level
+7. **Citations**: Factual claims have inline citations `[^N]` with matching footnote definitions
+8. **Runnable code**: Self-contained code blocks use `:runnable` tag with expected output comments
 
 ## Skills Used
 - `code-example-validator` — for validating code examples

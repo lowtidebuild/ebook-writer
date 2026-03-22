@@ -75,3 +75,14 @@ Legal Technology / AI for Legal Practice — Claude Code for Lawyers
 - AI 도구 사용 시 윤리적 주의사항을 적절한 곳에 자연스럽게 포함
 - 면책 조항: AI 도구는 법률 자문을 대체하지 않음을 명시
 - 실제 사건/판례 인용 시 정확한 형식 준수
+
+## Verification Policy
+
+When the Researcher agent performs cross-verification of factual claims, the following authoritative sources are treated as "super-sources" — a single source from this list satisfies the verification requirement without needing a second independent source:
+
+- **국가법령정보센터** (law.go.kr) — Korean legislation database
+- **대한민국 법원 종합법률정보** (glaw.scourt.go.kr) — Korean court decisions
+- **Anthropic official documentation** (docs.anthropic.com) — Claude/Claude Code documentation
+- **VS Code official documentation** (code.visualstudio.com) — VS Code documentation
+
+All other sources require standard cross-verification (2+ independent sources).
