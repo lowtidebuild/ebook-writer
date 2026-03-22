@@ -76,6 +76,25 @@ The pipeline runs automatically with only **two human checkpoints**:
 
 <br>
 
+## 🛡 v3: Ground Truth Architecture
+
+Built-in quality guarantees that reduce hallucinations and improve output:
+
+| Feature | How It Works |
+|---------|-------------|
+| **Cross-Verification** | Researcher validates key claims (stats, dates, legal refs) against 2+ independent sources. Confidence scores in `verification_report.json`. |
+| **Citation Tracking** | `citations.json` master DB flows through Writer (`[^N]` footnotes) &rarr; Editor (validation) &rarr; Translator (preservation) &rarr; PDF (bibliography). |
+| **Code Execution** | `:runnable` tagged code blocks are executed in a sandbox (30s timeout). Expected output is compared against actual output. |
+| **Reference Validation** | `validate_references.py` catches broken cross-references (e.g., "see Chapter 9" when Chapter 9 doesn't exist). |
+| **Image Prompt Templates** | 6 type-specific templates (architecture, process_flow, comparison, concept, metaphor, generic) replace manual prompt writing. |
+| **Vision Quality Review** | Orchestrator evaluates generated images against the style guide; low-scoring images get regenerated. |
+
+<br>
+
+---
+
+<br>
+
 ## 🏗 Architecture
 
 ```mermaid
@@ -132,11 +151,11 @@ Each agent has a focused role and its own `AGENT.md` instruction file:
 
 | | Agent | What It Does | Execution |
 |:--:|-------|-------------|:---------:|
-| 🔍 | **Researcher** | Web search + reference analysis &rarr; structured report | Single |
+| 🔍 | **Researcher** | Web search + reference analysis + **cross-verification** &rarr; structured report + citations DB | Single |
 | 📐 | **Architect** | Research &rarr; outline with chapter dependencies | Single |
-| ✍️ | **Writer** | Outline section &rarr; full chapter in target language | **Parallel** |
-| 🔎 | **Editor** | 2-pass review + production artifact detection | Single |
-| 🌐 | **Translator** | Bidirectional KO&harr;EN, preserving code & structure | **Parallel** |
+| ✍️ | **Writer** | Outline section &rarr; full chapter with **inline citations** + `:runnable` code tags | **Parallel** |
+| 🔎 | **Editor** | 2-pass review + **automated reference/code validation** + artifact detection | Single |
+| 🌐 | **Translator** | Bidirectional KO&harr;EN, preserving code, structure & **footnotes** | **Parallel** |
 
 <br>
 
@@ -148,10 +167,10 @@ Reusable capabilities invoked by agents and the orchestrator:
 |:--:|-------|---------|:-------:|
 | 🌍 | `web-research` | Search strategy, source credibility ranking | — |
 | 📄 | `reference-analyzer` | Parse .md / .pdf / .docx files | `parse_references.py` |
-| ✅ | `code-example-validator` | Validate code syntax (Python, JS, Bash) | `validate_code.py` |
+| ✅ | `code-example-validator` | Syntax validation + **`:runnable` execution** + **cross-reference checking** | `validate_code.py` `validate_references.py` |
 | 📋 | `quality-checker` | Quality rubric + domain criteria | — |
-| 🎨 | `image-generator` | `[IMAGE:]` markers &rarr; Gemini API &rarr; chapters | 3 scripts |
-| 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5, book-grade) | `build_pdf.py` |
+| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **auto-classify** &rarr; **template prompts** &rarr; Gemini API &rarr; **Vision QA** | 4 scripts + 6 templates |
+| 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5) + **footnotes** + **bibliography** | `build_pdf.py` |
 | 💻 | `web-viewer-builder` | PDF.js viewer with sidebar (PyMuPDF TOC extraction) | `build_viewer.py` |
 
 <br>
@@ -164,12 +183,12 @@ Reusable capabilities invoked by agents and the orchestrator:
 
 ```mermaid
 flowchart LR
-    S1["🔍 Research"] --> S2["📐 Outline"]
+    S1["🔍 Research<br/>+ Verify"] --> S2["📐 Outline"]
     S2 --> G1{{"⏸ Gate 1"}}
-    G1 -->|Approve| S3["✍️ Write ×N"]
+    G1 -->|Approve| S3["✍️ Write ×N<br/>+ Citations"]
     G1 -.->|Revise| S2
-    S3 --> S4["🔎 Edit"]
-    S4 --> S5["🎨 Images"]
+    S3 --> S4["🔎 Edit<br/>+ Validate"]
+    S4 --> S5["🎨 Images<br/>+ QA"]
     S5 --> S6["🌐 Translate ×N"]
     S6 --> S7["📕 PDF"]
     S7 --> S8["💻 Viewer"]

@@ -76,6 +76,25 @@
 
 <br>
 
+## 🛡 v3: Ground Truth Architecture
+
+할루시네이션을 줄이고 결과물 품질을 높이는 빌트인 검증 시스템:
+
+| 기능 | 작동 방식 |
+|------|----------|
+| **교차 검증** | Researcher가 핵심 주장(통계, 날짜, 법률, API 스펙)을 2+ 독립 소스로 검증. `verification_report.json`에 신뢰도 점수 기록. |
+| **인용 추적** | `citations.json` 마스터 DB가 Writer(`[^N]` 각주) &rarr; Editor(검증) &rarr; Translator(보존) &rarr; PDF(참고문헌)로 전달. |
+| **코드 실행 검증** | `:runnable` 태그된 코드 블록을 샌드박스에서 실행 (30초 타임아웃). 예상 출력과 실제 출력 비교. |
+| **레퍼런스 검증** | `validate_references.py`가 깨진 크로스레퍼런스 탐지 (예: "9장 참조"인데 9장이 없는 경우). |
+| **이미지 프롬프트 템플릿** | 6개 유형별 템플릿(architecture, process_flow, comparison, concept, metaphor, generic)으로 수동 프롬프트 작성 대체. |
+| **Vision 품질 검증** | 오케스트레이터가 생성된 이미지를 스타일 가이드 대비 평가. 점수 미달 시 재생성. |
+
+<br>
+
+---
+
+<br>
+
 ## 🏗 아키텍처
 
 <div align="center">
@@ -132,11 +151,11 @@ graph TD
 
 | | 에이전트 | 역할 | 실행 |
 |:--:|---------|------|:----:|
-| 🔍 | **Researcher** | 웹 검색 + 레퍼런스 분석 &rarr; 구조화된 리포트 | 단일 |
+| 🔍 | **Researcher** | 웹 검색 + 레퍼런스 분석 + **교차 검증** &rarr; 리포트 + 인용 DB | 단일 |
 | 📐 | **Architect** | 리서치 &rarr; 챕터 의존성 포함 목차 설계 | 단일 |
-| ✍️ | **Writer** | 목차 섹션 &rarr; 지정 언어로 챕터 전문 작성 | **병렬** |
-| 🔎 | **Editor** | 2-pass 리뷰 + 프로덕션 잔재 탐지 | 단일 |
-| 🌐 | **Translator** | 양방향 KO&harr;EN, 코드/구조 보존 | **병렬** |
+| ✍️ | **Writer** | 목차 섹션 &rarr; **인라인 인용** + `:runnable` 코드 태그 포함 챕터 | **병렬** |
+| 🔎 | **Editor** | 2-pass 리뷰 + **자동 레퍼런스/코드 검증** + 잔재 탐지 | 단일 |
+| 🌐 | **Translator** | 양방향 KO&harr;EN, 코드/구조/**각주** 보존 | **병렬** |
 
 <br>
 
@@ -146,10 +165,10 @@ graph TD
 |:--:|------|------|:-------:|
 | 🌍 | `web-research` | 검색 전략, 소스 신뢰도 평가 | — |
 | 📄 | `reference-analyzer` | .md/.pdf/.docx 파싱 | `parse_references.py` |
-| ✅ | `code-example-validator` | 코드 문법 검증 | `validate_code.py` |
+| ✅ | `code-example-validator` | 문법 검증 + **`:runnable` 실행** + **크로스레퍼런스 검증** | `validate_code.py` `validate_references.py` |
 | 📋 | `quality-checker` | 품질 루브릭 + 도메인 기준 | — |
-| 🎨 | `image-generator` | `[IMAGE:]` &rarr; Gemini API &rarr; 챕터 삽입 | 3개 스크립트 |
-| 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5) | `build_pdf.py` |
+| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **자동 분류** &rarr; **템플릿 프롬프트** &rarr; Gemini &rarr; **Vision QA** | 4개 스크립트 + 6개 템플릿 |
+| 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5) + **각주** + **참고문헌** | `build_pdf.py` |
 | 💻 | `web-viewer-builder` | PDF.js 뷰어 + PyMuPDF TOC 추출 | `build_viewer.py` |
 
 <br>
@@ -162,12 +181,12 @@ graph TD
 
 ```mermaid
 flowchart LR
-    S1["🔍 리서치"] --> S2["📐 목차"]
+    S1["🔍 리서치<br/>+ 검증"] --> S2["📐 목차"]
     S2 --> G1{{"⏸ Gate 1"}}
-    G1 -->|승인| S3["✍️ 집필 ×N"]
+    G1 -->|승인| S3["✍️ 집필 ×N<br/>+ 인용"]
     G1 -.->|수정| S2
-    S3 --> S4["🔎 편집"]
-    S4 --> S5["🎨 이미지"]
+    S3 --> S4["🔎 편집<br/>+ 검증"]
+    S4 --> S5["🎨 이미지<br/>+ QA"]
     S5 --> S6["🌐 번역 ×N"]
     S6 --> S7["📕 PDF"]
     S7 --> S8["💻 뷰어"]
