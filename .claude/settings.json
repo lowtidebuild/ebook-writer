@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/code-example-validator/**)",
+      "Bash(chmod +x \"/Users/kpsfamily/코딩 프로젝트/ebook-writer/.claude/skills/code-example-validator/scripts/validate_references.py\")",
+      "Edit(/.claude/skills/image-generator/**)",
+      "Edit(/.claude/skills/pdf-builder/**)",
+      "Bash(~/.claude/skills/gstack/bin/gstack-learnings-search --limit 10 --cross-project)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Edit(.env*)",
+      "Write(.env*)",
+      "Bash(cat .env*)",
+      "Bash(less .env*)",
+      "Bash(more .env*)",
+      "Bash(head .env*)",
+      "Bash(tail .env*)"
+    ],
+    "additionalDirectories": [
+      "/Users/kpsfamily/.gstack/projects/lowtidebuild-ebook-writer",
+      "/Users/kpsfamily/코딩 프로젝트/ebook-writer/.claude/skills/image-generator/references"
+    ]
+  }
+}

@@ -230,11 +230,18 @@ This step uses dependency-wave-based parallel execution:
 
 1. Read `output/outline/table_of_contents.md`
 2. Parse each chapter's **Dependencies** field
-3. Build dependency waves:
+3. Validate the dependency graph before scheduling any writing Tasks:
+   - Ensure every dependency points to an existing chapter number
+   - Detect DAG cycles before Wave 0 starts
+   - If a cycle is found:
+     - Log to `output/logs/step_3_cycle_detection.md`
+     - Include the concrete cycle path in the error message, e.g. `Chapter 4 -> Chapter 7 -> Chapter 4`
+     - Stop Step 3 immediately and escalate to the user for outline correction
+4. Build dependency waves:
    - **Wave 0**: Chapters with `Dependencies: none`
    - **Wave 1**: Chapters depending only on Wave 0 chapters
    - **Wave N**: Chapters depending only on Wave 0..N-1 chapters
-4. For each wave (sequential):
+5. For each wave (sequential):
    a. For each chapter in the wave (parallel, max 5 concurrent Tasks):
       ```
       Read .claude/agents/writer/AGENT.md and follow its instructions.
@@ -256,7 +263,7 @@ This step uses dependency-wave-based parallel execution:
    b. Wait for all Tasks in this wave to complete
    c. Verify each output file exists and is non-empty
    d. Update state.chapters[].write_status = "completed" for each
-5. All waves complete → Update state: step_3.status = "completed", last_completed_step = 3
+6. All waves complete → Update state: step_3.status = "completed", last_completed_step = 3
 
 ### Step 4: Editing/Validation
 
@@ -273,9 +280,9 @@ This step uses dependency-wave-based parallel execution:
 
    Pre-editing automated checks (run before spawning Editor):
    1. Cross-reference validation:
-      python3 .claude/skills/code-example-validator/scripts/validate_references.py output/chapters/{state.primary_language}/
+      python3 .claude/skills/code-example-validator/scripts/validate_references.py output/chapters/{state.primary_language}/ --citations output/research/citations.json
    2. Code execution validation:
-      python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute output/chapters/{state.primary_language}/
+      python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/{state.primary_language}/
    Include results of both checks in the Editor's input.
    ```
    If Gate 2 was previously rejected, append: `Focus on these chapters only: {list of flagged chapters from gate2_feedback}`
@@ -406,7 +413,12 @@ This step uses dependency-wave-based parallel execution:
 
 ### Gate 2: Final Review
 
-1. Present a summary of deliverables:
+1. Run a preflight checklist before presenting final deliverables:
+   - Confirm every outline chapter has a corresponding rendered chapter artifact in the primary language output (and secondary language output if `bilingual: true`)
+   - Confirm no `[IMAGE: ...]` markers remain in chapter markdown or downstream viewer artifacts
+   - Confirm footnote rendering is complete: no raw `[^N]` markers appear in final reader-facing artifacts, and cited footnotes/bibliography entries render without omissions
+   - If any check fails, treat it as a blocking issue and return to the earliest relevant step before Gate 2
+2. Present a summary of deliverables:
    ```
    파이프라인이 완료되었습니다. 산출물을 검토해주세요:
 
@@ -417,10 +429,10 @@ This step uses dependency-wave-based parallel execution:
    승인하시면 파이프라인을 완료합니다.
    수정이 필요한 챕터가 있으면 챕터 번호와 피드백을 알려주세요.
    ```
-2. **If approved**:
+3. **If approved**:
    - Set state.gate2_status = "approved"
    - Log: "Pipeline completed successfully."
-3. **If rejected with specific chapter feedback**:
+4. **If rejected with specific chapter feedback**:
    - Set state.gate2_status = "rejected"
    - Set state.gate2_feedback = user's feedback (chapter numbers + issues)
    - Reset flagged chapters' edit_status to "pending"
@@ -484,3 +496,9 @@ Key routing rules:
 - Design system, brand → invoke design-consultation
 - Visual audit, design polish → invoke design-review
 - Architecture review → invoke plan-eng-review
+
+## Security
+
+- **NEVER** read, cat, print, or access `.env` files directly
+- **NEVER** output API keys, secrets, or credentials in responses
+- When debugging environment issues, ask the user to verify env vars are set — do not read them yourself
