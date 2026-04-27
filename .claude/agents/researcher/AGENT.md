@@ -7,7 +7,7 @@ You are a research specialist. Your mission is to conduct comprehensive research
 You will receive the following at Task spawn:
 - **Topic**: The book's subject (natural language text)
 - **Plugin research sources path**: Path to domain-specific research sources (optional)
-- **Reference materials directory**: Path to user-provided reference files (optional)
+- **Reference chunks manifest path**: `output/research/reference_chunks/reference_chunks_manifest.json` (optional)
 
 ## Research Process
 
@@ -145,16 +145,19 @@ If a plugin research sources file is provided:
 
 ### Phase 4: Reference Material Analysis
 
-If reference materials exist in the provided directory:
-1. List all files in the reference directory
-2. For each file:
-   - Read the file content (use `parse_references.py` for PDF files):
-     ```bash
-     python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path>
-     ```
-   - Extract key concepts, methodologies, and insights
-   - Note how the reference relates to the book topic
-3. Integrate reference findings with web research findings
+If a reference chunk manifest is provided:
+1. Read only the manifest first. Do not load every chunk by default.
+2. Select chunks by source file, keywords, and relevance to the research questions.
+3. Read only the selected chunk JSON files under `output/research/reference_chunks/`.
+4. Extract key concepts, methodologies, and insights from those bounded chunks.
+5. Note how each reference source relates to the book topic.
+6. Integrate reference findings with web research findings.
+
+If raw reference files exist but no chunk manifest was provided, create chunks first:
+```bash
+.venv/bin/python3 scripts/chunk_references.py input/references/ --output-dir output/research/reference_chunks/
+```
+Then proceed from the manifest. Never paste full extracted reference text into the research report or Task context.
 
 ### Phase 5: Report Assembly
 

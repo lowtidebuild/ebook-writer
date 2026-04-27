@@ -10,7 +10,7 @@ You will receive the following at Task spawn:
 - **Writing language**: The language to write in (e.g., `ko` for Korean, `en` for English)
 - **Chapter pack path**: `output/research/chapter_packs/ch{NN}_{slug}.json` — chapter-specific claims, citations, and usage policy
 - **Research report path**: `output/research/research_report.md` (fallback only when the chapter pack is insufficient)
-- **Dependency chapter paths**: Paths to completed prerequisite chapters (if any)
+- **Dependency summary paths**: Compact summaries for completed prerequisite chapters (if any)
 - **Plugin path**: Path to domain plugin (if any)
 - **Target audience**: Description of the target reader
 - **Citations database path**: `output/research/citations.json` — fallback source DB; prefer citations embedded in the chapter pack
@@ -20,12 +20,13 @@ You will receive the following at Task spawn:
 
 ### Step 1: Gather Context
 1. Read the chapter pack first. Treat it as the source of truth for factual claims and inline citations.
-2. If dependency chapters exist, read them to understand:
+2. If dependency summaries exist, read them to understand:
    - What concepts have already been introduced
    - What terminology has been established
    - How to reference prior content naturally
-3. If a plugin exists, read its PLUGIN.md for writing guidelines
-4. Use the full research report, full citations database, or verification report only as fallback context. Do not introduce new factual claims or source IDs from those files unless the orchestrator updates the chapter pack first.
+3. Open full dependency chapter files only for a concrete unresolved continuity question.
+4. If a plugin exists, read its PLUGIN.md for writing guidelines
+5. Use the full research report, full citations database, or verification report only as fallback context. Do not introduce new factual claims or source IDs from those files unless the orchestrator updates the chapter pack first.
 
 ### Claim Usage Rules
 

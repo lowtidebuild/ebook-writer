@@ -11,6 +11,7 @@ You will receive the following at Task spawn:
 - **Research report path**: `output/research/research_report.md`
 - **Claim ledger path**: `output/research/claim_ledger.json`
 - **Chapter packs directory**: `output/research/chapter_packs/`
+- **Dependency summaries manifest**: `output/chapters/{lang}/summaries/dependency_summaries_manifest.json`
 - **Plugin quality criteria path**: Path to domain-specific quality criteria (optional)
 - **Focused chapters**: List of specific chapters to focus on (optional, for Gate 2 re-edits)
 - **Citations database path**: `output/research/citations.json`
@@ -21,6 +22,8 @@ You will receive the following at Task spawn:
 ## Editing Process — 2-Pass Approach
 
 Due to context limitations, use a two-pass approach rather than loading all chapters simultaneously.
+
+Before Pass 1, read the dependency summaries manifest and automated validation JSON outputs. Use them to target the highest-risk chapters first instead of loading the whole manuscript into context.
 
 ### Pass 1: Per-Chapter Review
 

@@ -7,6 +7,7 @@ Parse and extract key content from reference materials in various formats (.md, 
 1. File type detection and appropriate parsing
 2. Key content extraction (concepts, methodologies, insights)
 3. Structured output for integration with research report
+4. Bounded chunk-file output to avoid injecting full references into agent context
 
 ## Scripts
 - `scripts/parse_references.py` — Parse reference files and extract text content
@@ -14,6 +15,8 @@ Parse and extract key content from reference materials in various formats (.md, 
 ## Usage
 ```bash
 python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path>
+python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path> \
+  --output-dir output/research/reference_chunks/<source_name>/
 ```
 
 Output: JSON to stdout
@@ -26,6 +29,10 @@ Output: JSON to stdout
   "status": "success"
 }
 ```
+
+Prefer `--output-dir` in the ebook pipeline. In that mode stdout contains only
+status, word count, chunk count, and manifest path; extracted text is written to
+bounded chunk JSON files under `output/research/reference_chunks/`.
 
 ## When to Use
 - Researcher Agent processes files in `input/references/`

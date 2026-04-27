@@ -19,7 +19,9 @@ Generate a complete ebook from the given topic.
 1. **Parse arguments**:
    - Extract the topic from $ARGUMENTS
    - If `--plugin <domain>` is specified, verify `.claude/plugins/<domain>/PLUGIN.md` exists
-   - If no plugin specified, auto-detect: check if any plugin directory exists in `.claude/plugins/`
+   - If no plugin is specified, do **not** auto-detect a plugin; run in general-purpose mode
+   - If plugin directories exist but no `--plugin` was provided, mention them as available options only
+   - For deterministic checks, use `.venv/bin/python3 scripts/plugin_policy.py [--plugin <domain>]`
    - **Language detection** (in order of priority):
      1. If `--language <code>` is specified, use it
      2. Otherwise, auto-detect from the user's input language:
@@ -39,6 +41,7 @@ Generate a complete ebook from the given topic.
 3. **Initialize new pipeline**:
    - Create `output/pipeline_state.json` with `.venv/bin/python3 scripts/pipeline_state.py init`
    - Set `author` field based on the parsed or user-provided author name
+   - Set `plugin` only when `--plugin <domain>` was explicitly provided and validated
    - Set `bilingual` field based on user's choice
    - Validate the state with `.venv/bin/python3 scripts/pipeline_state.py validate output/pipeline_state.json`
    - Ensure all output subdirectories exist

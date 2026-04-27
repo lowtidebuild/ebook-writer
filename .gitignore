@@ -8,8 +8,9 @@ output/**
 ebook-generation-agent-design.md
 
 # User-provided reference materials (may contain proprietary/sensitive content)
-input/references/*.docx
-input/references/*.pdf
+input/references/**
+!input/references/
+!input/references/.gitkeep
 
 # Python
 __pycache__/

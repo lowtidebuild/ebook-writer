@@ -3,17 +3,21 @@
 
 Usage:
     python3 parse_references.py <file_path>
+    python3 parse_references.py <file_path> --output-dir output/research/reference_chunks/source_pdf/
 
 Supports: .md, .txt, .pdf, .docx
-Output: JSON to stdout
+Output: JSON to stdout. With --output-dir, stdout contains only status and
+manifest paths; extracted text is written to bounded chunk files.
 """
 
+import argparse
 import json
 import os
 import subprocess
 import sys
 import zipfile
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 
 def parse_markdown(file_path: str) -> str:
@@ -73,12 +77,52 @@ def parse_docx(file_path: str) -> str:
         raise RuntimeError(f"DOCX parsing failed: {e}")
 
 
-def main():
-    if len(sys.argv) != 2:
-        print(json.dumps({"status": "error", "error": "Usage: parse_references.py <file_path>"}))
-        sys.exit(1)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Parse and optionally chunk a reference file.")
+    parser.add_argument("file_path")
+    parser.add_argument("--output-dir", default=None)
+    parser.add_argument("--chunk-words", type=int, default=900)
+    parser.add_argument("--overlap-words", type=int, default=90)
+    return parser.parse_args(argv)
 
-    file_path = sys.argv[1]
+
+def write_chunk_output(
+    file_path: str,
+    content_type: str,
+    extracted_text: str,
+    output_dir: str,
+    chunk_words: int,
+    overlap_words: int,
+) -> dict:
+    """Write bounded chunk files via the repository chunking utility."""
+    repo_root = Path(__file__).resolve().parents[4]
+    scripts_dir = str(repo_root / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+
+    from chunk_references import write_chunks_for_text  # noqa: PLC0415
+
+    manifest = write_chunks_for_text(
+        file_path,
+        content_type,
+        extracted_text,
+        output_dir,
+        chunk_words=chunk_words,
+        overlap_words=overlap_words,
+    )
+    return {
+        "filename": os.path.basename(file_path),
+        "content_type": content_type,
+        "word_count": manifest["word_count"],
+        "chunk_count": manifest["chunk_count"],
+        "manifest_path": manifest["manifest_path"],
+        "status": "success",
+    }
+
+
+def main(argv: list[str] | None = None):
+    args = parse_args(argv)
+    file_path = args.file_path
 
     if not os.path.exists(file_path):
         print(json.dumps({"status": "error", "error": f"File not found: {file_path}"}))
@@ -108,6 +152,18 @@ def main():
     try:
         extracted_text = parser_fn(file_path)
         word_count = len(extracted_text.split())
+        if args.output_dir:
+            payload = write_chunk_output(
+                file_path,
+                content_type,
+                extracted_text,
+                args.output_dir,
+                args.chunk_words,
+                args.overlap_words,
+            )
+            print(json.dumps(payload, ensure_ascii=False))
+            return
+
         print(json.dumps({
             "filename": filename,
             "content_type": content_type,

@@ -57,10 +57,10 @@ Do NOT use the system `python3` — always use `.venv/bin/python3` to ensure dep
 
 | Agent | File | Step | Input | Output |
 |-------|------|------|-------|--------|
-| Researcher | `.claude/agents/researcher/AGENT.md` | 1 | Topic + plugin paths + reference paths | `output/research/research_report.md` + `verification_report.json` + `citations.json` |
-| Architect | `.claude/agents/architect/AGENT.md` | 2 | Research report path + plugin criteria | `output/outline/outline.json` + `table_of_contents.md` |
-| Writer (×N) | `.claude/agents/writer/AGENT.md` | 3 | Chapter assignment + language + paths + citations.json | `output/chapters/{primary}/ch{NN}_{slug}.md` |
-| Editor | `.claude/agents/editor/AGENT.md` | 4 | All chapter paths + outline + plugin criteria | Revised chapters + `output/edit/edit_report.md` |
+| Researcher | `.claude/agents/researcher/AGENT.md` | 1 | Topic + plugin paths + reference chunk manifest | `output/research/research_report.md` + `verification_report.json` + `citations.json` |
+| Architect | `.claude/agents/architect/AGENT.md` | 2 | Research summary path + plugin criteria | `output/outline/outline.json` + `table_of_contents.md` |
+| Writer (×N) | `.claude/agents/writer/AGENT.md` | 3 | Chapter assignment + chapter pack + dependency summaries | `output/chapters/{primary}/ch{NN}_{slug}.md` |
+| Editor | `.claude/agents/editor/AGENT.md` | 4 | Chapter summaries + validation JSON + outline + plugin criteria | Revised chapters + `output/edit/edit_report.md` |
 | Translator (×N) | `.claude/agents/translator/AGENT.md` | 6 | Source chapter + source/target language | `output/chapters/{secondary}/ch{NN}_{slug}.md` |
 
 ---
@@ -145,22 +145,25 @@ ELSE:
   Initialize a new pipeline (see Initialization below)
 ```
 
-### 2. Plugin Detection
+### 2. Plugin Selection
 ```
-IF .claude/plugins/{domain}/PLUGIN.md exists:
+IF --plugin {domain} was provided AND .claude/plugins/{domain}/PLUGIN.md exists:
   Read PLUGIN.md for metadata
   Set state.plugin = domain name
-  Log: "Domain plugin detected: {domain}"
+  Log: "Domain plugin selected: {domain}"
+ELSE IF --plugin {domain} was provided AND the plugin file is missing:
+  Stop initialization and report: "Plugin not found: {domain}"
 ELSE:
   Set state.plugin = null
   Log: "Running in general-purpose mode"
+  If .claude/plugins/ contains plugins, list them as available options only; do not activate one automatically
 ```
 
 ### 3. Initialization (New Pipeline)
 ```
 Create output/pipeline_state.json with:
   `.venv/bin/python3 scripts/pipeline_state.py init --topic "{topic}" --author "{author}" --primary-language "{primary_language}" --secondary-language "{secondary_language}"`
-  Include `--plugin "{plugin}"` only when a plugin is detected
+  Include `--plugin "{plugin}"` only when the user explicitly requested and validated a plugin
   Include `--bilingual` only when bilingual mode is enabled
   Translation step status is `skipped` when bilingual mode is disabled
 ```
@@ -171,33 +174,52 @@ Create output/pipeline_state.json with:
 
 ### Step 1: Research + Cross-Verification
 
-1. Spawn a Task with the Researcher Agent:
+1. If `input/references/` contains user materials, chunk them before spawning the Researcher:
+   ```bash
+   .venv/bin/python3 scripts/chunk_references.py \
+     input/references/ \
+     --output-dir output/research/reference_chunks/
+   ```
+   Pass only `output/research/reference_chunks/reference_chunks_manifest.json` to the Researcher. Do not paste full extracted reference text into Task input.
+2. Spawn a Task with the Researcher Agent:
    ```
    Read .claude/agents/researcher/AGENT.md and follow its instructions.
 
    Topic: {state.topic}
    Plugin research sources: .claude/plugins/{state.plugin}/research_sources.md (if plugin exists)
-   Reference materials directory: input/references/
+   Reference chunks manifest: output/research/reference_chunks/reference_chunks_manifest.json (if references exist)
    Output: output/research/research_report.md
    Additional outputs: output/research/verification_report.json, output/research/citations.json, output/research/claim_ledger.json
    ```
-2. Wait for Task completion
-3. Verify all four output files exist and are non-empty:
+3. Wait for Task completion
+4. Build supporting compact artifacts:
+   ```bash
+   .venv/bin/python3 scripts/source_cache.py \
+     output/research/citations.json \
+     output/research/source_cache.json
+
+   .venv/bin/python3 scripts/summarize_research_for_outline.py \
+     output/research/research_report.md \
+     output/research/research_summary_for_outline.md
+   ```
+5. Verify all required output files exist and are non-empty:
    - `output/research/research_report.md`
    - `output/research/verification_report.json`
    - `output/research/citations.json`
    - `output/research/claim_ledger.json`
-4. Validate the claim ledger:
+   - `output/research/source_cache.json`
+   - `output/research/research_summary_for_outline.md`
+6. Validate the claim ledger:
    ```bash
    .venv/bin/python3 scripts/validate_claims.py ledger \
      output/research/claim_ledger.json \
      --citations output/research/citations.json \
      --output output/logs/validation/claim_ledger_validation.json
    ```
-5. Read `verification_report.json` and check `verification_rate`:
+7. Read `verification_report.json` and check `verification_rate`:
    - If rate ≥ 0.70: proceed normally
    - If rate < 0.70: log warning, but proceed (Researcher already retried internally)
-6. Update state: steps.research.status = "completed", steps.research.verification_rate = {rate from report}, last_completed_step = "research"
+8. Update state: steps.research.status = "completed", steps.research.verification_rate = {rate from report}, last_completed_step = "research"
 
 **Note**: If `verification_report.json` or `citations.json` are missing (e.g., v2 state file), treat as optional and proceed. These files are required for new pipelines but not for resumed v2 pipelines.
 
@@ -207,7 +229,8 @@ Create output/pipeline_state.json with:
    ```
    Read .claude/agents/architect/AGENT.md and follow its instructions.
 
-   Research report: output/research/research_report.md
+   Research summary: output/research/research_summary_for_outline.md
+   Research report fallback: output/research/research_report.md
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
    Output: output/outline/outline.json and output/outline/table_of_contents.md
    ```
@@ -272,7 +295,7 @@ This step uses dependency-wave-based parallel execution:
 
       Chapter pack: output/research/chapter_packs/ch{NN}_{slug}.json
       Research report fallback: output/research/research_report.md
-      Dependency chapter files: {list paths of completed dependency chapters}
+      Dependency chapter summaries: {list paths from output/chapters/{state.primary_language}/summaries/ for completed dependency chapters}
       Plugin: .claude/plugins/{state.plugin}/PLUGIN.md (if plugin exists)
       Target audience: {from plugin or "general readers"}
       Output: output/chapters/{state.primary_language}/ch{NN}_{slug}.md
@@ -286,7 +309,13 @@ This step uses dependency-wave-based parallel execution:
         --ledger output/research/claim_ledger.json \
         --output output/logs/validation/claim_usage_ch{NN}_{slug}.json
       ```
-   d. Update state.chapters[].write_status = "completed" for each
+   d. Refresh compact dependency summaries for completed chapters:
+      ```bash
+      .venv/bin/python3 scripts/build_dependency_summaries.py \
+        output/chapters/{state.primary_language}/ \
+        output/chapters/{state.primary_language}/summaries/
+      ```
+   e. Update state.chapters[].write_status = "completed" for each
 7. All waves complete → Update state: steps.chapter_writing.status = "completed", last_completed_step = "chapter_writing"
 
 ### Step 4: Editing/Validation
@@ -302,16 +331,20 @@ This step uses dependency-wave-based parallel execution:
    Claim ledger: output/research/claim_ledger.json
    Chapter packs directory: output/research/chapter_packs/
    Citations database: output/research/citations.json
+   Dependency summaries manifest: output/chapters/{state.primary_language}/summaries/dependency_summaries_manifest.json
    Claim validation results: output/logs/validation/claim_usage_*.json
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
    Output: Revised chapter files + output/edit/edit_report.md
 
    Pre-editing automated checks (run before spawning Editor):
-   1. Cross-reference validation:
-      python3 .claude/skills/code-example-validator/scripts/validate_references.py output/chapters/{state.primary_language}/ --citations output/research/citations.json
-   2. Code execution validation:
-      python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/{state.primary_language}/
-   Include results of both checks in the Editor's input.
+   1. Refresh chapter dependency summaries:
+      .venv/bin/python3 scripts/build_dependency_summaries.py output/chapters/{state.primary_language}/ output/chapters/{state.primary_language}/summaries/
+   2. Cross-reference validation:
+      .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_references.py output/chapters/{state.primary_language}/ --citations output/research/citations.json
+   3. Code execution validation:
+      .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/{state.primary_language}/
+      In CI/production, prefer `--sandbox docker`. If Docker is unavailable during local development and the examples are trusted, rerun with `--sandbox process --allow-unsafe-process`.
+   Include summary manifest and results of both checks in the Editor's input.
    ```
    If Gate 2 was previously rejected, append: `Focus on these chapters only: {list of flagged chapters from state.gates.final.feedback}`
 2. Wait for Task completion

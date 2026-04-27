@@ -14,6 +14,8 @@ Validate syntax correctness of code examples embedded in chapter markdown files.
 ## Usage
 ```bash
 python3 .claude/skills/code-example-validator/scripts/validate_code.py <markdown_file>
+python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/ko/
+python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox process --allow-unsafe-process output/chapters/ko/
 ```
 
 Output: JSON to stdout
@@ -47,3 +49,6 @@ Output: JSON to stdout
 ## Failure Handling
 - If a language validator is not available (e.g., node not installed): skip, mark as "unchecked"
 - Never fail the entire validation because of one unsupported language
+- `--execute --sandbox auto` prefers Docker isolation (`--network none`, read-only rootfs, tmpfs workspace)
+- Process execution requires `--allow-unsafe-process` and is for trusted local examples only
+- Runnable blocks with obvious network usage (`requests`, `urllib`, `socket`, `http.client`, `curl`, `wget`, `nc`, `ssh`) fail before execution

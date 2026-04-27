@@ -4,41 +4,31 @@
 Usage:
     python3 validate_code.py <markdown_file>              # Syntax validation
     python3 validate_code.py --execute <file_or_directory> # Execute :runnable blocks
+    python3 validate_code.py --execute --sandbox docker <file_or_directory>
 
 Extracts fenced code blocks and validates syntax per language.
 With --execute, runs :runnable tagged blocks and checks expected output.
+Docker sandboxing is used when available. Process execution requires
+--allow-unsafe-process and is intended only for trusted local examples.
 Output: JSON to stdout
 """
 
+import argparse
 import ast
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
 
-
-def extract_code_blocks(markdown_text: str) -> list[dict]:
-    """Extract fenced code blocks with language tags and line numbers."""
-    blocks = []
-    pattern = re.compile(r"^```(\w+)?(?::(\w+))?\s*\n(.*?)^```", re.MULTILINE | re.DOTALL)
-
-    for i, match in enumerate(pattern.finditer(markdown_text)):
-        language = match.group(1) or "unknown"
-        tag = match.group(2)  # e.g., "runnable" or None
-        code = match.group(3)
-        # Calculate line number in the original file
-        line_number = markdown_text[: match.start()].count("\n") + 1
-        blocks.append({
-            "block_index": i,
-            "language": language.lower(),
-            "tag": tag,
-            "code": code,
-            "line_in_file": line_number,
-        })
-
-    return blocks
+from execution_sandbox import (
+    SandboxConfig,
+    SandboxUnavailableError,
+    UnsafeCodeError,
+    resolve_executor,
+    run_code_in_sandbox,
+)
+from markdown_utils import extract_code_blocks
 
 
 def validate_python(code: str) -> str | None:
@@ -116,51 +106,117 @@ def extract_expected_output(code: str) -> str | None:
     return None
 
 
-def execute_block(code: str, language: str) -> dict:
-    """Execute a :runnable code block and return results."""
-    executors = {"python": ["python3"], "py": ["python3"], "python3": ["python3"],
-                 "bash": ["bash"], "sh": ["bash"], "shell": ["bash"], "zsh": ["bash"]}
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse CLI arguments."""
+    parser = argparse.ArgumentParser(
+        description="Validate markdown code blocks and execute runnable examples.",
+    )
+    parser.add_argument("target", help="Markdown file, or chapter directory with --execute.")
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Execute :runnable blocks instead of syntax-only validation.",
+    )
+    parser.add_argument(
+        "--sandbox",
+        choices=["auto", "docker", "process"],
+        default="auto",
+        help="Sandbox backend for --execute (default: auto).",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Execution timeout in seconds for --execute (default: 30).",
+    )
+    parser.add_argument(
+        "--allow-unsafe-process",
+        action="store_true",
+        help="Allow --sandbox process fallback for trusted local examples only.",
+    )
+    return parser.parse_args(argv)
 
-    cmd = executors.get(language)
-    if cmd is None:
+
+def execute_block(
+    code: str,
+    language: str,
+    sandbox_mode: str = "auto",
+    timeout: int = 30,
+    allow_unsafe_process: bool = False,
+) -> dict:
+    """Execute a :runnable code block and return results."""
+    if resolve_executor(language) is None:
         return {"status": "skipped", "reason": f"No executor for {language}"}
 
+    config = SandboxConfig(
+        mode=sandbox_mode,
+        timeout_seconds=timeout,
+        allow_unsafe_process=allow_unsafe_process,
+    )
+
     try:
-        result = subprocess.run(
-            cmd,
-            input=code,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        expected = extract_expected_output(code)
-        stdout = result.stdout.rstrip("\n")
-
-        if result.returncode != 0:
-            return {
-                "status": "failed",
-                "error": result.stderr.strip()[:500],
-                "stdout": stdout,
-                "stderr": result.stderr.strip()[:500],
-            }
-
-        output = {"status": "passed", "stdout": stdout}
-
-        if expected is not None:
-            output["expected_output"] = expected
-            output["match"] = stdout.strip() == expected.strip()
-            if not output["match"]:
-                output["status"] = "failed"
-                output["error"] = f"Output mismatch: expected '{expected}', got '{stdout.strip()}'"
-
-        return output
-
+        sandbox_result = run_code_in_sandbox(code, language, config)
+    except UnsafeCodeError as exc:
+        return {
+            "status": "failed",
+            "error": str(exc),
+            "stdout": "",
+            "stderr": "",
+            "sandbox": {
+                "backend": sandbox_mode,
+                "network_access": "blocked_by_static_lint",
+            },
+        }
+    except SandboxUnavailableError as exc:
+        return {
+            "status": "failed",
+            "error": str(exc),
+            "stdout": "",
+            "stderr": "",
+            "sandbox": {"backend": sandbox_mode},
+        }
     except subprocess.TimeoutExpired:
-        return {"status": "failed", "error": "TimeoutExpired: execution exceeded 30s",
-                "stdout": "", "stderr": ""}
+        return {
+            "status": "failed",
+            "error": f"TimeoutExpired: execution exceeded {timeout}s",
+            "stdout": "",
+            "stderr": "",
+            "sandbox": {"backend": sandbox_mode},
+        }
+    expected = extract_expected_output(code)
+    stdout = sandbox_result["stdout"]
+
+    if sandbox_result["returncode"] != 0:
+        return {
+            "status": "failed",
+            "error": sandbox_result["stderr"],
+            "stdout": stdout,
+            "stderr": sandbox_result["stderr"],
+            "sandbox": sandbox_result["sandbox"],
+        }
+
+    output = {
+        "status": "passed",
+        "stdout": stdout,
+        "sandbox": sandbox_result["sandbox"],
+    }
+
+    if expected is not None:
+        output["expected_output"] = expected
+        output["match"] = stdout.strip() == expected.strip()
+        if not output["match"]:
+            output["status"] = "failed"
+            output["error"] = f"Output mismatch: expected '{expected}', got '{stdout.strip()}'"
+
+    return output
 
 
-def run_execute_mode(path: str):
+def run_execute_mode(
+    path: str,
+    sandbox_mode: str = "auto",
+    timeout: int = 30,
+    allow_unsafe_process: bool = False,
+):
     """Execute :runnable blocks in a file or directory."""
     if os.path.isdir(path):
         files = sorted([os.path.join(path, f) for f in os.listdir(path)
@@ -181,7 +237,13 @@ def run_execute_mode(path: str):
         failed = 0
 
         for block in runnable:
-            result = execute_block(block["code"], block["language"])
+            result = execute_block(
+                block["code"],
+                block["language"],
+                sandbox_mode=sandbox_mode,
+                timeout=timeout,
+                allow_unsafe_process=allow_unsafe_process,
+            )
             result["block_index"] = block["block_index"]
             result["language"] = block["language"]
             result["line_in_file"] = block["line_in_file"]
@@ -244,26 +306,24 @@ def run_syntax_mode(file_path: str):
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: validate_code.py [--execute] <file_or_directory>"}))
-        sys.exit(1)
+def main(argv: list[str] | None = None):
+    args = parse_args(argv)
 
-    if sys.argv[1] == "--execute":
-        if len(sys.argv) < 3:
-            print(json.dumps({"error": "Usage: validate_code.py --execute <file_or_directory>"}))
+    if args.execute:
+        if not os.path.exists(args.target):
+            print(json.dumps({"error": f"Path not found: {args.target}"}))
             sys.exit(1)
-        path = sys.argv[2]
-        if not os.path.exists(path):
-            print(json.dumps({"error": f"Path not found: {path}"}))
-            sys.exit(1)
-        run_execute_mode(path)
+        run_execute_mode(
+            args.target,
+            sandbox_mode=args.sandbox,
+            timeout=args.timeout,
+            allow_unsafe_process=args.allow_unsafe_process,
+        )
     else:
-        file_path = sys.argv[1]
-        if not os.path.exists(file_path):
-            print(json.dumps({"error": f"File not found: {file_path}"}))
+        if not os.path.exists(args.target):
+            print(json.dumps({"error": f"File not found: {args.target}"}))
             sys.exit(1)
-        run_syntax_mode(file_path)
+        run_syntax_mode(args.target)
 
 
 if __name__ == "__main__":
