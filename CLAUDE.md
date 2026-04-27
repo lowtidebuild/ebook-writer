@@ -353,12 +353,30 @@ This step uses dependency-wave-based parallel execution:
      ```
    This replaces the previous manual prompt writing by the orchestrator.
 
+   This step also assigns each entry a `provider` field based on `image_type`:
+   - `architecture`, `process_flow`, `comparison_table` → `diagram` (deterministic local SVG renderer; no API key or private backend)
+   - `concept_diagram`, `metaphor` → `gemini` (cheap, stable; fine for illustrative content)
+
+   Override options:
+   - Set `IMAGE_PROVIDER=diagram|codex|gemini|openai` to force one provider for the entire run
+   - Edit the manifest's `provider` field per entry before running step 3 below
+   - Provider requirements:
+     - `diagram`: no external dependency; produces SVG
+     - `codex`: requires `god-tibo-imagen` (gti) installed and a working `codex login` (~/.codex/auth.json) on a ChatGPT account with image entitlement. The backend is unsupported by OpenAI and may break at any time
+     - `gemini`: requires `GEMINI_API_KEY`
+     - `openai`: requires `OPENAI_API_KEY` (paid API; reserved as explicit override)
+
 3. **Generate images**:
    ```bash
    python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
    ```
+   Diagram provider entries are rendered locally as SVG files. Model provider failures are recorded in the manifest and remain blocking in preflight; do not rely on visible failure placeholders.
 
-4. **Quality review** (for `architecture` and `process_flow` types only):
+4. **Quality and file review**:
+   ```bash
+   .venv/bin/python3 scripts/review_images.py output/images/image_manifest.json
+   ```
+   Then, for `architecture` and `process_flow` model-generated images only:
    - Read each generated image file for these types
    - Evaluate against the style guide (1-10 score): style consistency, text readability, conceptual accuracy
    - If score < 7: revise the prompt and regenerate (max 2 retries)
@@ -369,6 +387,7 @@ This step uses dependency-wave-based parallel execution:
    ```bash
    python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/{state.primary_language}/
    ```
+   Failed or pending image entries are replaced with neutral caption fallback text only. They are still blocking through `validate_images.py` unless explicitly approved.
 
 6. Verify primary chapters and image manifest:
    ```bash

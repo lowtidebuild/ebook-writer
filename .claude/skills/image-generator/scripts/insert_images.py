@@ -35,9 +35,11 @@ def build_replacement(entry: dict, chapter_path: Path) -> str:
         relative_path = os.path.relpath(output_path, chapter_path.parent)
         relative_path = relative_path.replace(os.sep, "/")
         return f"![{description}]({relative_path})"
-    else:
-        # Placeholder for failed or still-pending entries
-        return f"> [이미지 생성 실패] {description}"
+
+    # Failed/pending images should not leak production failure placeholders
+    # into reader-facing chapters. The manifest remains blocking in final
+    # preflight, while the chapter receives a neutral caption fallback.
+    return f"> _Image omitted: {description}_"
 
 
 def insert_images(manifest_path: str, chapters_dir: str) -> None:
@@ -54,7 +56,7 @@ def insert_images(manifest_path: str, chapters_dir: str) -> None:
         chapters_map.setdefault(chapter_file, []).append(entry)
 
     inserted_count = 0
-    placeholder_count = 0
+    fallback_count = 0
     skipped_files = 0
 
     for chapter_file, entries in chapters_map.items():
@@ -85,7 +87,7 @@ def insert_images(manifest_path: str, chapters_dir: str) -> None:
                 if entry["status"] == "completed":
                     inserted_count += 1
                 else:
-                    placeholder_count += 1
+                    fallback_count += 1
             else:
                 print(
                     f"Warning: marker not found in {chapter_file}: "
@@ -102,7 +104,7 @@ def insert_images(manifest_path: str, chapters_dir: str) -> None:
     # ------------------------------------------------------------------
     print(f"Insertion complete:")
     print(f"  Images inserted : {inserted_count}")
-    print(f"  Placeholders    : {placeholder_count}")
+    print(f"  Caption fallback: {fallback_count}")
     if skipped_files:
         print(f"  Skipped files   : {skipped_files}")
 

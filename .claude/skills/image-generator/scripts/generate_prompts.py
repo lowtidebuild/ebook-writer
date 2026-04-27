@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 
 def load_template(templates_dir: str, image_type: str) -> str:
@@ -45,6 +46,56 @@ def generate_prompt(template: str, description: str) -> str:
     return template.replace("{description}", description)
 
 
+# Default provider routing per image type.
+# - "diagram": deterministic local SVG renderer for text-heavy diagrams.
+# - "gemini": Google Gemini multimodal image output. Cheap and stable; used for
+#   illustrative content where text accuracy is less critical.
+# - "codex": optional god-tibo-imagen (gti) backend via local Codex CLI auth.
+# - "openai": Paid OpenAI Images API (gpt-image-*). Reserved for explicit
+#   override when caller wants the official API for reliability.
+DEFAULT_PROVIDER_ROUTING = {
+    "architecture": "diagram",
+    "process_flow": "diagram",
+    "comparison_table": "diagram",
+    "concept_diagram": "gemini",
+    "metaphor": "gemini",
+}
+
+VALID_PROVIDERS = {"diagram", "codex", "gemini", "openai"}
+
+
+def resolve_provider(image_type: str) -> str:
+    """Pick a provider for the given image type.
+
+    A global override via IMAGE_PROVIDER (diagram|codex|gemini|openai)
+    wins over the per-type default. Unknown types fall back to gemini.
+    """
+    override = os.environ.get("IMAGE_PROVIDER", "").strip().lower()
+    if override in VALID_PROVIDERS:
+        return override
+    return DEFAULT_PROVIDER_ROUTING.get(image_type, "gemini")
+
+
+def ensure_output_path(entry: dict, manifest_path: str, provider: str) -> None:
+    """Fill or correct output_path once provider routing is known."""
+    suffix = ".svg" if provider == "diagram" else ".png"
+    existing = entry.get("output_path")
+    if existing:
+        path = Path(existing)
+        if provider == "diagram" and path.suffix.lower() != ".svg":
+            entry["output_path"] = str(path.with_suffix(".svg"))
+        return
+
+    stem = entry.get("output_stem")
+    if not stem:
+        marker_id = entry.get("marker_id")
+        if not marker_id:
+            return
+        stem = str(Path(manifest_path).parent / marker_id)
+        entry["output_stem"] = stem
+    entry["output_path"] = str(Path(stem).with_suffix(suffix))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate image prompts from templates")
     parser.add_argument("--manifest", required=True, help="Path to image_manifest.json")
@@ -69,12 +120,20 @@ def main():
     entries = manifest if isinstance(manifest, list) else manifest.get("entries", manifest.get("images", []))
 
     for entry in entries:
+        image_type = entry.get("image_type")
+
+        # Always (re)assign provider when missing so existing manifests get
+        # routed correctly on subsequent runs. Don't overwrite user-set values.
+        if not entry.get("provider") and image_type:
+            entry["provider"] = resolve_provider(image_type)
+        provider = entry.get("provider") or resolve_provider(image_type or "")
+        ensure_output_path(entry, args.manifest, provider)
+
         # Skip entries that already have prompts
         if entry.get("prompt"):
             skipped_count += 1
             continue
 
-        image_type = entry.get("image_type")
         description = entry.get("description", "")
 
         if not image_type or not description:

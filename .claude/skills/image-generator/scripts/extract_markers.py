@@ -52,10 +52,10 @@ def extract_markers(chapters_dir: str, output_manifest_path: str) -> None:
                 chapter_counters[chapter_tag] = counter
                 marker_id = f"{chapter_tag}_img{counter:02d}"
 
-                # Determine the output image path relative to project root,
-                # placed alongside the manifest.
+                # Provider routing decides the final extension later. Keep a
+                # stable stem so SVG/PNG providers can fill output_path safely.
                 output_dir = Path(output_manifest_path).parent
-                output_image_path = str(output_dir / f"{marker_id}.png")
+                output_stem = str(output_dir / marker_id)
 
                 manifest.append(
                     {
@@ -63,7 +63,8 @@ def extract_markers(chapters_dir: str, output_manifest_path: str) -> None:
                         "chapter_file": str(md_file),
                         "description": description,
                         "line_number": line_number,
-                        "output_path": output_image_path,
+                        "output_stem": output_stem,
+                        "output_path": None,
                         "prompt": None,
                         "status": "pending",
                     }
