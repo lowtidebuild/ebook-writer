@@ -345,7 +345,15 @@ This step uses dependency-wave-based parallel execution:
    python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/{state.primary_language}/
    ```
 
-6. Verify no `[IMAGE: ...]` markers remain in chapter files
+6. Verify primary chapters and image manifest:
+   ```bash
+   .venv/bin/python3 scripts/validate_chapters.py output/chapters/{state.primary_language}/ \
+     --language {state.primary_language} \
+     --citations output/research/citations.json \
+     --output output/logs/validation/chapter_validation_{state.primary_language}.json
+   .venv/bin/python3 scripts/validate_images.py output/images/image_manifest.json \
+     --output output/logs/validation/image_validation.json
+   ```
 7. Update state: steps.image_generation.status = "completed", steps.image_generation.quality_review_status = "completed", last_completed_step = "image_generation"
 
 **Note**: Image generation failures are **non-blocking**. Failed images get placeholder text. The pipeline continues regardless.
@@ -366,7 +374,17 @@ This step uses dependency-wave-based parallel execution:
    ```
 3. Wait for all Tasks to complete
 4. Verify each translated chapter file exists
-5. Verify structural correspondence: primary/secondary chapter count match, code block count match per chapter
+5. Verify translated chapters and structural correspondence:
+   ```bash
+   .venv/bin/python3 scripts/validate_chapters.py output/chapters/{state.secondary_language}/ \
+     --language {state.secondary_language} \
+     --citations output/research/citations.json \
+     --output output/logs/validation/chapter_validation_{state.secondary_language}.json
+   .venv/bin/python3 scripts/validate_translations.py \
+     output/chapters/{state.primary_language}/ \
+     output/chapters/{state.secondary_language}/ \
+     --output output/logs/validation/translation_validation.json
+   ```
 6. Update state: steps.translation.status = "completed", last_completed_step = "translation"
 
 ### Step 7: PDF Typesetting
@@ -397,7 +415,14 @@ This step uses dependency-wave-based parallel execution:
      --author "{state.author}" \
      --citations output/research/citations.json
    ```
-3. Verify PDF file(s) exist and have size > 10KB
+3. Verify PDF file(s):
+   ```bash
+   .venv/bin/python3 scripts/validate_final_pdf.py \
+     output/final/book_{state.primary_language}.pdf \
+     --language {state.primary_language} \
+     --output output/logs/validation/pdf_validation_{state.primary_language}.json
+   ```
+   If `state.bilingual` is `true`, run the same command for `book_{state.secondary_language}.pdf` with `--language {state.secondary_language}`.
 4. Update state: steps.pdf_typesetting.status = "completed", last_completed_step = "pdf_typesetting"
 
 ### Step 8: Web Viewer Generation
@@ -415,16 +440,35 @@ This step uses dependency-wave-based parallel execution:
      --secondary-lang {state.secondary_language}
    ```
    If `state.bilingual` is `false`, omit `--pdf-secondary` and `--title-secondary`.
-2. Verify `output/web-viewer/index.html` exists and PDF files are copied
+2. Verify web viewer:
+   ```bash
+   .venv/bin/python3 scripts/validate_web_viewer.py output/web-viewer/ \
+     --primary-pdf output/final/book_{state.primary_language}.pdf \
+     --output output/logs/validation/web_viewer_validation.json
+   ```
+   If `state.bilingual` is `true`, include `--secondary-pdf output/final/book_{state.secondary_language}.pdf --bilingual`.
 3. Update state: steps.web_viewer.status = "completed", last_completed_step = "web_viewer"
 
 ### Gate 2: Final Review
 
-1. Run a preflight checklist before presenting final deliverables:
-   - Confirm every outline chapter has a corresponding rendered chapter artifact in the primary language output (and secondary language output if `bilingual: true`)
-   - Confirm no `[IMAGE: ...]` markers remain in chapter markdown or downstream viewer artifacts
-   - Confirm footnote rendering is complete: no raw `[^N]` markers appear in final reader-facing artifacts, and cited footnotes/bibliography entries render without omissions
-   - If any check fails, treat it as a blocking issue and return to the earliest relevant step before Gate 2
+1. Run final preflight before presenting deliverables:
+   ```bash
+   .venv/bin/python3 scripts/final_preflight.py \
+     --primary-chapters output/chapters/{state.primary_language}/ \
+     --primary-language {state.primary_language} \
+     --citations output/research/citations.json \
+     --image-manifest output/images/image_manifest.json \
+     --primary-pdf output/final/book_{state.primary_language}.pdf \
+     --viewer-dir output/web-viewer/
+   ```
+   If `state.bilingual` is `true`, include:
+   ```bash
+   --bilingual \
+   --secondary-chapters output/chapters/{state.secondary_language}/ \
+   --secondary-language {state.secondary_language} \
+   --secondary-pdf output/final/book_{state.secondary_language}.pdf
+   ```
+   If preflight fails, treat it as blocking and return to the earliest relevant step before Gate 2.
 2. Present a summary of deliverables:
    ```
    파이프라인이 완료되었습니다. 산출물을 검토해주세요:

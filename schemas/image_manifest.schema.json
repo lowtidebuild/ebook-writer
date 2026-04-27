@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebook-writer.local/schemas/image_manifest.schema.json",
+  "title": "Ebook Writer Image Manifest",
+  "type": "array",
+  "items": { "$ref": "#/$defs/image_entry" },
+  "$defs": {
+    "image_entry": {
+      "type": "object",
+      "required": ["marker_id", "chapter_file", "description", "line_number", "status"],
+      "properties": {
+        "marker_id": { "type": "string", "minLength": 1 },
+        "chapter_file": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "line_number": { "type": "integer", "minimum": 1 },
+        "image_type": {
+          "enum": [
+            "concept_diagram",
+            "process_flow",
+            "comparison_table",
+            "architecture",
+            "metaphor",
+            null
+          ]
+        },
+        "provider": { "enum": ["diagram", "gemini", "openai", "codex", null] },
+        "output_path": { "type": ["string", "null"] },
+        "prompt": { "type": ["string", "null"] },
+        "status": { "enum": ["pending", "completed", "failed", "skipped"] },
+        "quality_score": { "type": ["number", "null"], "minimum": 0, "maximum": 10 },
+        "blocking_issues": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "error": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  }
+}
