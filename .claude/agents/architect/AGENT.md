@@ -24,18 +24,21 @@ You will receive the following at Task spawn:
    - Middle chapters: core features, practical applications, intermediate techniques
    - Late chapters: advanced topics, integration, best practices, future outlook
 3. For each chapter, define:
+   - **Chapter ID**: Sequential integer starting at 1
+   - **Slug**: Stable lowercase kebab-case identifier for file names
    - **Title**: Clear, descriptive chapter title
    - **Summary**: 2-3 sentences describing the chapter's purpose and content
    - **Key Content**: Bullet list of specific topics to cover
    - **Estimated Length**: Word count estimate (2000-5000 words per chapter)
-   - **Dependencies**: List of chapter numbers this chapter depends on, or `none`
+   - **Dependencies**: Array of chapter IDs this chapter depends on, or an empty array
 
 ### Step 3: Specify Dependencies
 Dependencies determine the parallel execution order for chapter writing:
 - A chapter depends on another if it references concepts first introduced there
 - Minimize dependencies — only declare true prerequisites
 - Avoid circular dependencies
-- Chapters with `Dependencies: none` will be written first (in parallel)
+- Assume the orchestrator will reject cyclic dependency graphs and escalate with the exact cycle path
+- Chapters with `"dependencies": []` will be written first (in parallel)
 
 ### Step 4: Apply Plugin Criteria (if applicable)
 If plugin quality criteria are provided:
@@ -52,7 +55,50 @@ If this is a revision after Gate 1 rejection:
 
 ## Output Format
 
-Write to `output/outline/table_of_contents.md`:
+Write two files:
+
+1. `output/outline/outline.json` - primary structured source of truth
+2. `output/outline/table_of_contents.md` - readable Markdown rendered from the JSON
+
+The JSON must follow this structure:
+
+```json
+{
+  "book_title": "Book Title",
+  "target_audience": "description of target reader",
+  "language": "ko",
+  "chapters": [
+    {
+      "chapter_id": 1,
+      "slug": "foundation",
+      "title": "Chapter Title",
+      "summary": "2-3 sentence chapter summary.",
+      "key_content": ["topic 1", "topic 2", "topic 3"],
+      "estimated_words": 3000,
+      "dependencies": []
+    },
+    {
+      "chapter_id": 2,
+      "slug": "practical-workflow",
+      "title": "Next Chapter Title",
+      "summary": "2-3 sentence chapter summary.",
+      "key_content": ["topic 1", "topic 2"],
+      "estimated_words": 3500,
+      "dependencies": [1]
+    }
+  ]
+}
+```
+
+Use the optional chapter field `"part": "Part I: Foundations"` only when the book has 10+ chapters and parts materially improve navigation.
+
+After writing `outline.json`, render the Markdown companion:
+
+```bash
+.venv/bin/python3 scripts/render_outline_markdown.py output/outline/outline.json output/outline/table_of_contents.md
+```
+
+The rendered Markdown will look like this:
 
 ```markdown
 # {Book Title}
@@ -66,6 +112,7 @@ Write to `output/outline/table_of_contents.md`:
 ## Part I: {Part Title} (optional, only if 10+ chapters)
 
 ### Chapter 1: {Chapter Title}
+- **Slug**: `{slug}`
 - **Summary**: {2-3 sentences}
 - **Key Content**:
   - {topic 1}
@@ -75,6 +122,7 @@ Write to `output/outline/table_of_contents.md`:
 - **Dependencies**: none
 
 ### Chapter 2: {Chapter Title}
+- **Slug**: `{slug}`
 - **Summary**: {2-3 sentences}
 - **Key Content**:
   - {topic 1}
@@ -83,6 +131,7 @@ Write to `output/outline/table_of_contents.md`:
 - **Dependencies**: [1]
 
 ### Chapter 3: {Chapter Title}
+- **Slug**: `{slug}`
 - **Summary**: {2-3 sentences}
 - **Key Content**:
   - {topic 1}
@@ -107,11 +156,20 @@ After completing the outline, validate:
    - Remove unnecessary dependencies to maximize parallelism
 4. **Length balance**: Are chapters roughly similar in length (within 2x of each other)?
    - If not, split overly long chapters or merge short ones
-5. **Completeness**: Does each chapter have all required fields (Summary, Key Content, Estimated Length, Dependencies)?
+5. **Completeness**: Does each chapter have all required JSON fields?
+6. **Artifact consistency**: Does Markdown exactly match the JSON-rendered output?
 
 If issues are found, fix them and re-validate (max 2 iterations).
+
+Then run:
+
+```bash
+.venv/bin/python3 scripts/validate_outline.py output/outline/outline.json --markdown output/outline/table_of_contents.md
+```
+
+If validation fails, fix `outline.json`, regenerate Markdown, and rerun validation.
 
 ## Completion
 
 When the outline is complete and validated, return the output path:
-`output/outline/table_of_contents.md`
+`output/outline/outline.json` and `output/outline/table_of_contents.md`

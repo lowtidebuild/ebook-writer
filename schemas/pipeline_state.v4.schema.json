@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebook-writer.local/schemas/pipeline_state.v4.schema.json",
+  "title": "Ebook Writer Pipeline State v4",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "pipeline",
+    "topic",
+    "author",
+    "primary_language",
+    "secondary_language",
+    "bilingual",
+    "started_at",
+    "updated_at",
+    "current_step",
+    "chapters",
+    "steps",
+    "gates"
+  ],
+  "properties": {
+    "schema_version": { "const": 4 },
+    "pipeline": { "const": "generate" },
+    "topic": { "type": "string", "minLength": 1 },
+    "author": { "type": "string", "minLength": 1 },
+    "plugin": { "type": ["string", "null"] },
+    "primary_language": { "type": "string", "minLength": 2 },
+    "secondary_language": { "type": "string", "minLength": 2 },
+    "bilingual": { "type": "boolean" },
+    "started_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "current_step": {
+      "enum": [
+        "research",
+        "outline",
+        "chapter_writing",
+        "editing",
+        "image_generation",
+        "translation",
+        "pdf_typesetting",
+        "web_viewer"
+      ]
+    },
+    "last_completed_step": {
+      "type": ["string", "null"],
+      "enum": [
+        "research",
+        "outline",
+        "chapter_writing",
+        "editing",
+        "image_generation",
+        "translation",
+        "pdf_typesetting",
+        "web_viewer",
+        null
+      ]
+    },
+    "chapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/chapter_state" }
+    },
+    "steps": {
+      "type": "object",
+      "required": [
+        "research",
+        "outline",
+        "chapter_writing",
+        "editing",
+        "image_generation",
+        "translation",
+        "pdf_typesetting",
+        "web_viewer"
+      ],
+      "properties": {
+        "research": { "$ref": "#/$defs/step" },
+        "outline": { "$ref": "#/$defs/step" },
+        "chapter_writing": { "$ref": "#/$defs/step" },
+        "editing": { "$ref": "#/$defs/step" },
+        "image_generation": { "$ref": "#/$defs/step" },
+        "translation": { "$ref": "#/$defs/step" },
+        "pdf_typesetting": { "$ref": "#/$defs/step" },
+        "web_viewer": { "$ref": "#/$defs/step" }
+      },
+      "additionalProperties": false
+    },
+    "gates": {
+      "type": "object",
+      "required": ["outline", "final"],
+      "properties": {
+        "outline": { "$ref": "#/$defs/gate" },
+        "final": { "$ref": "#/$defs/gate" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "step": {
+      "type": "object",
+      "required": ["name", "status", "outputs", "retry_count", "completed_at"],
+      "properties": {
+        "name": { "type": "string" },
+        "status": {
+          "enum": ["pending", "running", "completed", "skipped", "failed", "blocked"]
+        },
+        "outputs": { "type": "object" },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "completed_at": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "gate": {
+      "type": "object",
+      "required": ["status", "feedback"],
+      "properties": {
+        "status": { "enum": ["pending", "approved", "rejected"] },
+        "feedback": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "chapter_state": {
+      "type": "object",
+      "required": ["chapter_id", "slug", "title", "dependencies"],
+      "properties": {
+        "chapter_id": { "type": "integer", "minimum": 1 },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "write_status": {
+          "enum": ["pending", "running", "completed", "skipped", "failed", "blocked"]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

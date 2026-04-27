@@ -16,10 +16,12 @@ Resume an interrupted or paused ebook generation pipeline.
 
 2. **Read and validate state**:
    - Read `output/pipeline_state.json`
+   - If `schema_version` is missing or lower than 4, run `.venv/bin/python3 scripts/pipeline_state.py migrate output/pipeline_state.json`
+   - Run `.venv/bin/python3 scripts/pipeline_state.py validate output/pipeline_state.json`
    - Display current status:
      - Topic: {topic}
      - Plugin: {plugin or "없음"}
-     - Last completed step: Step {N} ({name})
+     - Last completed step: {last_completed_step or "없음"}
      - Started: {started_at}
      - Last updated: {updated_at}
 

@@ -58,7 +58,7 @@ Do NOT use the system `python3` — always use `.venv/bin/python3` to ensure dep
 | Agent | File | Step | Input | Output |
 |-------|------|------|-------|--------|
 | Researcher | `.claude/agents/researcher/AGENT.md` | 1 | Topic + plugin paths + reference paths | `output/research/research_report.md` + `verification_report.json` + `citations.json` |
-| Architect | `.claude/agents/architect/AGENT.md` | 2 | Research report path + plugin criteria | `output/outline/table_of_contents.md` |
+| Architect | `.claude/agents/architect/AGENT.md` | 2 | Research report path + plugin criteria | `output/outline/outline.json` + `table_of_contents.md` |
 | Writer (×N) | `.claude/agents/writer/AGENT.md` | 3 | Chapter assignment + language + paths + citations.json | `output/chapters/{primary}/ch{NN}_{slug}.md` |
 | Editor | `.claude/agents/editor/AGENT.md` | 4 | All chapter paths + outline + plugin criteria | Revised chapters + `output/edit/edit_report.md` |
 | Translator (×N) | `.claude/agents/translator/AGENT.md` | 6 | Source chapter + source/target language | `output/chapters/{secondary}/ch{NN}_{slug}.md` |
@@ -73,33 +73,37 @@ All state is tracked in `output/pipeline_state.json`. This file is the single so
 
 ```json
 {
+  "schema_version": 4,
   "pipeline": "generate",
   "topic": "string",
   "author": "string",
   "plugin": "string or null",
   "primary_language": "ko",
   "secondary_language": "en",
+  "bilingual": false,
   "started_at": "ISO8601",
   "updated_at": "ISO8601",
-  "current_step": 1,
-  "last_completed_step": 0,
-  "gate1_status": "pending",
-  "gate1_feedback": null,
-  "gate2_status": "pending",
-  "gate2_feedback": null,
+  "current_step": "research",
+  "last_completed_step": null,
   "chapters": [],
-  "step_artifacts": {
-    "step_1": { "name": "research", "status": "pending", "output": "output/research/research_report.md", "verification_output": "output/research/verification_report.json", "citations_output": "output/research/citations.json", "verification_rate": null, "retry_count": 0, "completed_at": null },
-    "step_2": { "name": "outline", "status": "pending", "output": "output/outline/table_of_contents.md", "retry_count": 0, "completed_at": null },
-    "step_3": { "name": "chapter_writing", "status": "pending", "output": "output/chapters/{primary_language}/", "retry_count": 0, "completed_at": null },
-    "step_4": { "name": "editing", "status": "pending", "output": "output/edit/edit_report.md", "retry_count": 0, "completed_at": null },
-    "step_5": { "name": "image_generation", "status": "pending", "output": "output/images/", "quality_review_status": "pending", "avg_quality_score": null, "retry_count": 0, "completed_at": null },
-    "step_6": { "name": "translation", "status": "pending", "output": "output/chapters/{secondary_language}/", "retry_count": 0, "completed_at": null },
-    "step_7": { "name": "pdf_typesetting", "status": "pending", "output": "output/final/", "retry_count": 0, "completed_at": null },
-    "step_8": { "name": "web_viewer", "status": "pending", "output": "output/web-viewer/", "retry_count": 0, "completed_at": null }
+  "steps": {
+    "research": { "name": "research", "status": "pending", "outputs": { "research_report": "output/research/research_report.md", "verification_report": "output/research/verification_report.json", "citations": "output/research/citations.json" }, "retry_count": 0, "completed_at": null, "error": null },
+    "outline": { "name": "outline", "status": "pending", "outputs": { "outline_json": "output/outline/outline.json", "table_of_contents": "output/outline/table_of_contents.md" }, "retry_count": 0, "completed_at": null, "error": null },
+    "chapter_writing": { "name": "chapter_writing", "status": "pending", "outputs": { "directory": "output/chapters/{primary_language}/" }, "retry_count": 0, "completed_at": null, "error": null },
+    "editing": { "name": "editing", "status": "pending", "outputs": { "edit_report": "output/edit/edit_report.md" }, "retry_count": 0, "completed_at": null, "error": null },
+    "image_generation": { "name": "image_generation", "status": "pending", "outputs": { "directory": "output/images/" }, "quality_review_status": "pending", "avg_quality_score": null, "retry_count": 0, "completed_at": null, "error": null },
+    "translation": { "name": "translation", "status": "skipped", "outputs": { "directory": "output/chapters/{secondary_language}/" }, "retry_count": 0, "completed_at": null, "error": null },
+    "pdf_typesetting": { "name": "pdf_typesetting", "status": "pending", "outputs": { "directory": "output/final/" }, "retry_count": 0, "completed_at": null, "error": null },
+    "web_viewer": { "name": "web_viewer", "status": "pending", "outputs": { "directory": "output/web-viewer/" }, "retry_count": 0, "completed_at": null, "error": null }
+  },
+  "gates": {
+    "outline": { "status": "pending", "feedback": null },
+    "final": { "status": "pending", "feedback": null }
   }
 }
 ```
+
+Use `schemas/pipeline_state.v4.schema.json` as the schema reference. Use `scripts/pipeline_state.py` to initialize, migrate, and validate state files instead of hand-writing legacy `step_1`/`gate1_status` structures.
 
 ### Language Configuration
 
@@ -116,8 +120,8 @@ All state is tracked in `output/pipeline_state.json`. This file is the single so
 
 1. **Update AFTER completion only** — never update state mid-step
 2. **Always set `updated_at`** to the current ISO8601 timestamp when modifying state
-3. **Increment `last_completed_step`** only when the step fully succeeds
-4. **Set `current_step`** to the step currently being executed
+3. **Set `last_completed_step`** to the completed step name only when the step fully succeeds
+4. **Set `current_step`** to the step name currently being executed
 
 ---
 
@@ -129,16 +133,13 @@ When the `/generate` command is invoked:
 ```
 IF output/pipeline_state.json exists:
   Read the state file
-  Backfill any missing v3 fields with defaults:
-    - step_1.verification_output → null
-    - step_1.citations_output → null
-    - step_1.verification_rate → null
-    - step_5.quality_review_status → null
-    - step_5.avg_quality_score → null
+  If schema_version is missing or lower than 4:
+    Run `.venv/bin/python3 scripts/pipeline_state.py migrate output/pipeline_state.json --default-author "{author}"`
+  Run `.venv/bin/python3 scripts/pipeline_state.py validate output/pipeline_state.json`
   Validate all completed step artifacts exist on disk
   IF any completed step's artifact is missing:
     Reset that step and all subsequent steps to "pending"
-    Warn: "Step {N} artifact missing. Resuming from Step {N}."
+    Warn: "Step {name} artifact missing. Resuming from Step {name}."
   Resume from the next pending step
 ELSE:
   Initialize a new pipeline (see Initialization below)
@@ -158,14 +159,10 @@ ELSE:
 ### 3. Initialization (New Pipeline)
 ```
 Create output/pipeline_state.json with:
-  topic = user-provided topic
-  author = user-provided author
-  plugin = detected plugin or null
-  started_at = now
-  updated_at = now
-  current_step = 1
-  last_completed_step = 0
-  All step_artifacts status = "pending"
+  `.venv/bin/python3 scripts/pipeline_state.py init --topic "{topic}" --author "{author}" --primary-language "{primary_language}" --secondary-language "{secondary_language}"`
+  Include `--plugin "{plugin}"` only when a plugin is detected
+  Include `--bilingual` only when bilingual mode is enabled
+  Translation step status is `skipped` when bilingual mode is disabled
 ```
 
 ---
@@ -192,7 +189,7 @@ Create output/pipeline_state.json with:
 4. Read `verification_report.json` and check `verification_rate`:
    - If rate ≥ 0.70: proceed normally
    - If rate < 0.70: log warning, but proceed (Researcher already retried internally)
-5. Update state: step_1.status = "completed", step_1.verification_rate = {rate from report}, last_completed_step = 1
+5. Update state: steps.research.status = "completed", steps.research.verification_rate = {rate from report}, last_completed_step = "research"
 
 **Note**: If `verification_report.json` or `citations.json` are missing (e.g., v2 state file), treat as optional and proceed. These files are required for new pipelines but not for resumed v2 pipelines.
 
@@ -204,12 +201,15 @@ Create output/pipeline_state.json with:
 
    Research report: output/research/research_report.md
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
-   Output: output/outline/table_of_contents.md
+   Output: output/outline/outline.json and output/outline/table_of_contents.md
    ```
-   If Gate 1 was previously rejected, append: `User feedback from previous revision: {state.gate1_feedback}`
+   If Gate 1 was previously rejected, append: `User feedback from previous revision: {state.gates.outline.feedback}`
 2. Wait for Task completion
-3. Verify `output/outline/table_of_contents.md` exists
-4. Update state: step_2.status = "completed", last_completed_step = 2
+3. Verify both outline artifacts exist:
+   - `output/outline/outline.json`
+   - `output/outline/table_of_contents.md`
+4. Run `.venv/bin/python3 scripts/validate_outline.py output/outline/outline.json --markdown output/outline/table_of_contents.md`
+5. Update state: steps.outline.status = "completed", last_completed_step = "outline"
 
 ### Gate 1: Outline Approval
 
@@ -217,21 +217,21 @@ Create output/pipeline_state.json with:
 2. Present the full outline to the user
 3. Ask: **"아웃라인이 준비되었습니다. 승인하시면 챕터 작성을 시작합니다. 수정이 필요하면 피드백을 주세요."**
 4. **If approved**:
-   - Set state.gate1_status = "approved"
-   - Parse the outline to populate state.chapters array (extract chapter numbers, slugs, titles, dependencies)
+   - Set state.gates.outline.status = "approved"
+   - Populate state.chapters from `output/outline/outline.json` using `chapter_state_entries` in `scripts/outline_utils.py`
    - Proceed to Step 3
 5. **If rejected with feedback**:
-   - Set state.gate1_status = "rejected"
-   - Set state.gate1_feedback = user's feedback
-   - Reset step_2 to "pending"
+   - Set state.gates.outline.status = "rejected"
+   - Set state.gates.outline.feedback = user's feedback
+   - Reset steps.outline.status to "pending"
    - Re-execute Step 2
 
 ### Step 3: Chapter Writing (Parallel)
 
 This step uses dependency-wave-based parallel execution:
 
-1. Read `output/outline/table_of_contents.md`
-2. Parse each chapter's **Dependencies** field
+1. Read `output/outline/outline.json`
+2. Validate it again with `.venv/bin/python3 scripts/validate_outline.py output/outline/outline.json --markdown output/outline/table_of_contents.md`
 3. Validate the dependency graph before scheduling any writing Tasks:
    - Ensure every dependency points to an existing chapter number
    - Detect DAG cycles before Wave 0 starts
@@ -239,8 +239,8 @@ This step uses dependency-wave-based parallel execution:
      - Log to `output/logs/step_3_cycle_detection.md`
      - Include the concrete cycle path in the error message, e.g. `Chapter 4 -> Chapter 7 -> Chapter 4`
      - Stop Step 3 immediately and escalate to the user for outline correction
-4. Build dependency waves:
-   - **Wave 0**: Chapters with `Dependencies: none`
+4. Build dependency waves from JSON dependencies:
+   - **Wave 0**: Chapters with empty `dependencies`
    - **Wave 1**: Chapters depending only on Wave 0 chapters
    - **Wave N**: Chapters depending only on Wave 0..N-1 chapters
 5. For each wave (sequential):
@@ -251,8 +251,8 @@ This step uses dependency-wave-based parallel execution:
       Chapter: {number} - {title}
       Slug: {slug}
       Writing language: {state.primary_language}
-      Outline section:
-      {paste the relevant outline section for this chapter}
+      Outline data:
+      {paste the chapter object from output/outline/outline.json}
 
       Research report: output/research/research_report.md
       Citations database: output/research/citations.json
@@ -265,7 +265,7 @@ This step uses dependency-wave-based parallel execution:
    b. Wait for all Tasks in this wave to complete
    c. Verify each output file exists and is non-empty
    d. Update state.chapters[].write_status = "completed" for each
-6. All waves complete → Update state: step_3.status = "completed", last_completed_step = 3
+6. All waves complete → Update state: steps.chapter_writing.status = "completed", last_completed_step = "chapter_writing"
 
 ### Step 4: Editing/Validation
 
@@ -274,7 +274,8 @@ This step uses dependency-wave-based parallel execution:
    Read .claude/agents/editor/AGENT.md and follow its instructions.
 
    Chapter directory: output/chapters/{state.primary_language}/
-   Outline: output/outline/table_of_contents.md
+   Outline JSON: output/outline/outline.json
+   Outline Markdown: output/outline/table_of_contents.md
    Research report: output/research/research_report.md
    Citations database: output/research/citations.json
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
@@ -287,12 +288,12 @@ This step uses dependency-wave-based parallel execution:
       python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/{state.primary_language}/
    Include results of both checks in the Editor's input.
    ```
-   If Gate 2 was previously rejected, append: `Focus on these chapters only: {list of flagged chapters from gate2_feedback}`
+   If Gate 2 was previously rejected, append: `Focus on these chapters only: {list of flagged chapters from state.gates.final.feedback}`
 2. Wait for Task completion
 3. Read `output/edit/edit_report.md`
 4. Check for blocking issues:
    - **If blocking issues exist and retry_count < 2**:
-     - Increment step_4.retry_count
+     - Increment steps.editing.retry_count
      - Identify chapters with blocking issues
      - Reset those chapters' write_status to "pending"
      - Re-execute Step 3 for those chapters only, then re-execute Step 4
@@ -300,7 +301,7 @@ This step uses dependency-wave-based parallel execution:
      - Log to `output/logs/editing_escalation.md`
      - Proceed (human will review at Gate 2)
    - **If no blocking issues**:
-     - Update state: step_4.status = "completed", last_completed_step = 4
+     - Update state: steps.editing.status = "completed", last_completed_step = "editing"
 
 ### Step 5: Image Generation (4-step sub-pipeline)
 
@@ -337,7 +338,7 @@ This step uses dependency-wave-based parallel execution:
    - Evaluate against the style guide (1-10 score): style consistency, text readability, conceptual accuracy
    - If score < 7: revise the prompt and regenerate (max 2 retries)
    - Update manifest with `quality_score` and `review_notes`
-   - Update state: step_5.avg_quality_score = average score
+   - Update state: steps.image_generation.avg_quality_score = average score
 
 5. **Insert images**:
    ```bash
@@ -345,13 +346,13 @@ This step uses dependency-wave-based parallel execution:
    ```
 
 6. Verify no `[IMAGE: ...]` markers remain in chapter files
-7. Update state: step_5.status = "completed", step_5.quality_review_status = "completed", last_completed_step = 5
+7. Update state: steps.image_generation.status = "completed", steps.image_generation.quality_review_status = "completed", last_completed_step = "image_generation"
 
 **Note**: Image generation failures are **non-blocking**. Failed images get placeholder text. The pipeline continues regardless.
 
 ### Step 6: Translation (Primary → Secondary Language, Parallel)
 
-**Skip this step if `state.bilingual` is `false`.** Set step_6.status = "skipped" and proceed to Step 7.
+**Skip this step if `state.bilingual` is `false`.** Set steps.translation.status = "skipped" and proceed to Step 7.
 
 1. List all chapter files in `output/chapters/{state.primary_language}/`
 2. For each chapter (parallel, max 5 concurrent Tasks):
@@ -366,7 +367,7 @@ This step uses dependency-wave-based parallel execution:
 3. Wait for all Tasks to complete
 4. Verify each translated chapter file exists
 5. Verify structural correspondence: primary/secondary chapter count match, code block count match per chapter
-6. Update state: step_6.status = "completed", last_completed_step = 6
+6. Update state: steps.translation.status = "completed", last_completed_step = "translation"
 
 ### Step 7: PDF Typesetting
 
@@ -397,7 +398,7 @@ This step uses dependency-wave-based parallel execution:
      --citations output/research/citations.json
    ```
 3. Verify PDF file(s) exist and have size > 10KB
-4. Update state: step_7.status = "completed", last_completed_step = 7
+4. Update state: steps.pdf_typesetting.status = "completed", last_completed_step = "pdf_typesetting"
 
 ### Step 8: Web Viewer Generation
 
@@ -415,7 +416,7 @@ This step uses dependency-wave-based parallel execution:
    ```
    If `state.bilingual` is `false`, omit `--pdf-secondary` and `--title-secondary`.
 2. Verify `output/web-viewer/index.html` exists and PDF files are copied
-3. Update state: step_8.status = "completed", last_completed_step = 8
+3. Update state: steps.web_viewer.status = "completed", last_completed_step = "web_viewer"
 
 ### Gate 2: Final Review
 
@@ -436,11 +437,11 @@ This step uses dependency-wave-based parallel execution:
    수정이 필요한 챕터가 있으면 챕터 번호와 피드백을 알려주세요.
    ```
 3. **If approved**:
-   - Set state.gate2_status = "approved"
+   - Set state.gates.final.status = "approved"
    - Log: "Pipeline completed successfully."
 4. **If rejected with specific chapter feedback**:
-   - Set state.gate2_status = "rejected"
-   - Set state.gate2_feedback = user's feedback (chapter numbers + issues)
+   - Set state.gates.final.status = "rejected"
+   - Set state.gates.final.feedback = user's feedback (chapter numbers + issues)
    - Reset flagged chapters' edit_status to "pending"
    - Re-execute from Step 4 (editing only flagged chapters)
    - Then re-execute Steps 5-8

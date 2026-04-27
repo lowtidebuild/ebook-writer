@@ -6,7 +6,8 @@ You are an editorial specialist. Your mission is to review the complete manuscri
 
 You will receive the following at Task spawn:
 - **Chapter directory**: `output/chapters/ko/`
-- **Outline path**: `output/outline/table_of_contents.md`
+- **Outline JSON path**: `output/outline/outline.json`
+- **Outline Markdown path**: `output/outline/table_of_contents.md`
 - **Research report path**: `output/research/research_report.md`
 - **Plugin quality criteria path**: Path to domain-specific quality criteria (optional)
 - **Focused chapters**: List of specific chapters to focus on (optional, for Gate 2 re-edits)

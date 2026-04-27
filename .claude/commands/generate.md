@@ -37,9 +37,10 @@ Generate a complete ebook from the given topic.
    - If `output/pipeline_state.json` exists, offer to resume or restart
 
 3. **Initialize new pipeline**:
-   - Create `output/pipeline_state.json` per the schema in CLAUDE.md
+   - Create `output/pipeline_state.json` with `.venv/bin/python3 scripts/pipeline_state.py init`
    - Set `author` field based on the parsed or user-provided author name
    - Set `bilingual` field based on user's choice
+   - Validate the state with `.venv/bin/python3 scripts/pipeline_state.py validate output/pipeline_state.json`
    - Ensure all output subdirectories exist
 
 4. **Execute pipeline**:
