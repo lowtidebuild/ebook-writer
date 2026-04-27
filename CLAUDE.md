@@ -179,17 +179,25 @@ Create output/pipeline_state.json with:
    Plugin research sources: .claude/plugins/{state.plugin}/research_sources.md (if plugin exists)
    Reference materials directory: input/references/
    Output: output/research/research_report.md
-   Additional outputs: output/research/verification_report.json, output/research/citations.json
+   Additional outputs: output/research/verification_report.json, output/research/citations.json, output/research/claim_ledger.json
    ```
 2. Wait for Task completion
-3. Verify all three output files exist and are non-empty:
+3. Verify all four output files exist and are non-empty:
    - `output/research/research_report.md`
    - `output/research/verification_report.json`
    - `output/research/citations.json`
-4. Read `verification_report.json` and check `verification_rate`:
+   - `output/research/claim_ledger.json`
+4. Validate the claim ledger:
+   ```bash
+   .venv/bin/python3 scripts/validate_claims.py ledger \
+     output/research/claim_ledger.json \
+     --citations output/research/citations.json \
+     --output output/logs/validation/claim_ledger_validation.json
+   ```
+5. Read `verification_report.json` and check `verification_rate`:
    - If rate ≥ 0.70: proceed normally
    - If rate < 0.70: log warning, but proceed (Researcher already retried internally)
-5. Update state: steps.research.status = "completed", steps.research.verification_rate = {rate from report}, last_completed_step = "research"
+6. Update state: steps.research.status = "completed", steps.research.verification_rate = {rate from report}, last_completed_step = "research"
 
 **Note**: If `verification_report.json` or `citations.json` are missing (e.g., v2 state file), treat as optional and proceed. These files are required for new pipelines but not for resumed v2 pipelines.
 
@@ -239,11 +247,19 @@ This step uses dependency-wave-based parallel execution:
      - Log to `output/logs/step_3_cycle_detection.md`
      - Include the concrete cycle path in the error message, e.g. `Chapter 4 -> Chapter 7 -> Chapter 4`
      - Stop Step 3 immediately and escalate to the user for outline correction
-4. Build dependency waves from JSON dependencies:
+4. Build chapter evidence packs:
+   ```bash
+   .venv/bin/python3 scripts/build_chapter_packs.py \
+     output/outline/outline.json \
+     output/research/claim_ledger.json \
+     output/research/citations.json \
+     output/research/chapter_packs/
+   ```
+5. Build dependency waves from JSON dependencies:
    - **Wave 0**: Chapters with empty `dependencies`
    - **Wave 1**: Chapters depending only on Wave 0 chapters
    - **Wave N**: Chapters depending only on Wave 0..N-1 chapters
-5. For each wave (sequential):
+6. For each wave (sequential):
    a. For each chapter in the wave (parallel, max 5 concurrent Tasks):
       ```
       Read .claude/agents/writer/AGENT.md and follow its instructions.
@@ -254,18 +270,24 @@ This step uses dependency-wave-based parallel execution:
       Outline data:
       {paste the chapter object from output/outline/outline.json}
 
-      Research report: output/research/research_report.md
-      Citations database: output/research/citations.json
-      Verification report: output/research/verification_report.json
+      Chapter pack: output/research/chapter_packs/ch{NN}_{slug}.json
+      Research report fallback: output/research/research_report.md
       Dependency chapter files: {list paths of completed dependency chapters}
       Plugin: .claude/plugins/{state.plugin}/PLUGIN.md (if plugin exists)
       Target audience: {from plugin or "general readers"}
       Output: output/chapters/{state.primary_language}/ch{NN}_{slug}.md
       ```
    b. Wait for all Tasks in this wave to complete
-   c. Verify each output file exists and is non-empty
+   c. Verify each output file exists and is non-empty, then validate claim usage:
+      ```bash
+      .venv/bin/python3 scripts/validate_claims.py chapter \
+        output/chapters/{state.primary_language}/ch{NN}_{slug}.md \
+        --pack output/research/chapter_packs/ch{NN}_{slug}.json \
+        --ledger output/research/claim_ledger.json \
+        --output output/logs/validation/claim_usage_ch{NN}_{slug}.json
+      ```
    d. Update state.chapters[].write_status = "completed" for each
-6. All waves complete → Update state: steps.chapter_writing.status = "completed", last_completed_step = "chapter_writing"
+7. All waves complete → Update state: steps.chapter_writing.status = "completed", last_completed_step = "chapter_writing"
 
 ### Step 4: Editing/Validation
 
@@ -277,7 +299,10 @@ This step uses dependency-wave-based parallel execution:
    Outline JSON: output/outline/outline.json
    Outline Markdown: output/outline/table_of_contents.md
    Research report: output/research/research_report.md
+   Claim ledger: output/research/claim_ledger.json
+   Chapter packs directory: output/research/chapter_packs/
    Citations database: output/research/citations.json
+   Claim validation results: output/logs/validation/claim_usage_*.json
    Plugin quality criteria: .claude/plugins/{state.plugin}/quality_criteria.md (if plugin exists)
    Output: Revised chapter files + output/edit/edit_report.md
 
@@ -457,6 +482,8 @@ This step uses dependency-wave-based parallel execution:
      --primary-chapters output/chapters/{state.primary_language}/ \
      --primary-language {state.primary_language} \
      --citations output/research/citations.json \
+     --claim-ledger output/research/claim_ledger.json \
+     --chapter-packs-dir output/research/chapter_packs/ \
      --image-manifest output/images/image_manifest.json \
      --primary-pdf output/final/book_{state.primary_language}.pdf \
      --viewer-dir output/web-viewer/

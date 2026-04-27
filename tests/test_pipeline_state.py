@@ -23,6 +23,7 @@ def test_create_initial_state_uses_v4_named_steps() -> None:
     assert state["current_step"] == "research"
     assert state["last_completed_step"] is None
     assert state["steps"]["outline"]["outputs"]["outline_json"] == "output/outline/outline.json"
+    assert state["steps"]["research"]["outputs"]["claim_ledger"] == "output/research/claim_ledger.json"
     assert state["steps"]["translation"]["status"] == "skipped"
     assert state["gates"]["outline"]["status"] == "pending"
     assert pipeline_state.validate_state(state) == []

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ebook-writer.local/schemas/claim_ledger.schema.json",
+  "title": "Ebook Writer Claim Ledger",
+  "type": "object",
+  "required": ["claims"],
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": [
+        "id",
+        "text",
+        "topic_tags",
+        "source_ids",
+        "supporting_excerpt",
+        "confidence",
+        "allowed_usage"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^claim_[0-9A-Za-z_-]+$" },
+        "text": { "type": "string", "minLength": 1 },
+        "topic_tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "chapter_ids": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "chapter_slugs": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "source_ids": {
+          "type": "array",
+          "items": { "type": ["integer", "string"] }
+        },
+        "supporting_excerpt": { "type": "string" },
+        "confidence": {
+          "enum": ["verified", "partially_verified", "unverified"]
+        },
+        "allowed_usage": {
+          "enum": ["safe_to_state", "state_with_hedge", "background_only", "do_not_use"]
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

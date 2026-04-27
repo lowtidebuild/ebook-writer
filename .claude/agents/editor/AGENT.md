@@ -9,9 +9,12 @@ You will receive the following at Task spawn:
 - **Outline JSON path**: `output/outline/outline.json`
 - **Outline Markdown path**: `output/outline/table_of_contents.md`
 - **Research report path**: `output/research/research_report.md`
+- **Claim ledger path**: `output/research/claim_ledger.json`
+- **Chapter packs directory**: `output/research/chapter_packs/`
 - **Plugin quality criteria path**: Path to domain-specific quality criteria (optional)
 - **Focused chapters**: List of specific chapters to focus on (optional, for Gate 2 re-edits)
 - **Citations database path**: `output/research/citations.json`
+- **Claim validation results**: Output from `validate_claims.py chapter` for each chapter (provided by orchestrator)
 - **Cross-reference validation results**: Output from `validate_references.py` (provided by orchestrator)
 - **Code execution validation results**: Output from `validate_code.py --execute` (provided by orchestrator)
 
@@ -23,14 +26,15 @@ Due to context limitations, use a two-pass approach rather than loading all chap
 
 For each chapter file (read one at a time):
 
-1. **Content Accuracy**: Cross-reference key claims against the research report
+1. **Content Accuracy**: Cross-reference key factual claims against the chapter pack and claim ledger first; use the research report only as supporting context
 2. **Clarity**: Is the explanation clear for the target audience? Would a beginner understand?
 3. **Code Correctness**: Are code examples syntactically valid and logically sound?
 4. **Structure**: Does the chapter follow a logical flow? Are headings properly hierarchical?
 5. **Completeness**: Does the chapter cover all Key Content specified in the outline?
 6. **Image Markers**: Are `[IMAGE: ...]` markers present and descriptive enough?
-7. **Citation Validation**: All `[^N]` markers have matching footnote definitions at the chapter end. All citation IDs reference valid entries in `citations.json`.
+7. **Citation Validation**: All `[^N]` markers have matching footnote definitions at the chapter end. All citation IDs reference valid entries in `citations.json` and are allowed by that chapter's pack.
 8. **Code Execution Results**: Review `validate_code.py --execute` output. Any `:runnable` block that failed execution or produced unexpected output is a **blocking issue**.
+9. **Claim Validation Results**: Review `validate_claims.py chapter` output. Any pack-outside source ID, `do_not_use` claim usage, or risky uncited factual claim is a **blocking issue**.
 
 During this pass, collect:
 - A terminology glossary (term → definition used)
@@ -54,6 +58,7 @@ Using the data collected in Pass 1:
 5. **Progressive Complexity**: Verify later chapters build on earlier ones appropriately
 6. **Cross-Reference Accuracy**: Review `validate_references.py` output. Any reference to a non-existent chapter is a **blocking issue**. Fix by correcting the chapter number or removing the reference.
 7. **Citation Consistency**: Verify the same source is cited with the same `[^N]` ID across chapters. No duplicate IDs with different sources.
+8. **Claim Boundary Consistency**: If a chapter needs a claim outside its pack, flag it for pack regeneration rather than silently borrowing another chapter's source.
 
 ### Plugin Quality Criteria (if applicable)
 
@@ -132,7 +137,7 @@ These are **blocking** issues — a single placeholder or failed image marker vi
 
 ## Issue Severity Classification
 
-- **Blocking**: Production artifacts (above list), factual errors, broken code examples, missing critical content, logical contradictions, failed `:runnable` code execution, references to non-existent chapters (from validate_references.py), orphaned citation markers
+- **Blocking**: Production artifacts (above list), factual errors, pack-outside source IDs, `do_not_use` claim usage, risky uncited factual claims, broken code examples, missing critical content, logical contradictions, failed `:runnable` code execution, references to non-existent chapters (from validate_references.py), orphaned citation markers
 - **Non-blocking**: Minor style inconsistencies, suboptimal phrasing, minor formatting issues
 - **Note**: Log for reference but no action needed
 

@@ -28,6 +28,7 @@ STEP_OUTPUTS = {
         "research_report": "output/research/research_report.md",
         "verification_report": "output/research/verification_report.json",
         "citations": "output/research/citations.json",
+        "claim_ledger": "output/research/claim_ledger.json",
     },
     "outline": {
         "outline_json": "output/outline/outline.json",

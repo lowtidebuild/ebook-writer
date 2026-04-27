@@ -10,6 +10,7 @@ from typing import Any
 
 from preflight_utils import result_payload, write_json
 from validate_chapters import validate_chapters
+from validate_claims import validate_chapter_usage
 from validate_final_pdf import validate_final_pdf
 from validate_images import validate_images
 from validate_translations import validate_translations
@@ -31,6 +32,18 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
 
     results.append(validate_chapters(args.primary_chapters, args.primary_language, args.citations))
+
+    chapter_packs_dir = getattr(args, "chapter_packs_dir", None)
+    if chapter_packs_dir:
+        for chapter_path in sorted(Path(args.primary_chapters).glob("ch*.md")):
+            pack_path = Path(chapter_packs_dir) / f"{chapter_path.stem}.json"
+            results.append(
+                validate_chapter_usage(
+                    chapter_path,
+                    pack_path,
+                    ledger_path=getattr(args, "claim_ledger", None),
+                )
+            )
 
     if args.secondary_chapters:
         results.append(validate_chapters(args.secondary_chapters, args.secondary_language, args.citations))
@@ -73,6 +86,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--secondary-language", default="en", choices=["ko", "en"])
     parser.add_argument("--bilingual", action="store_true")
     parser.add_argument("--citations")
+    parser.add_argument("--claim-ledger")
+    parser.add_argument("--chapter-packs-dir")
     parser.add_argument("--image-manifest")
     parser.add_argument("--primary-pdf")
     parser.add_argument("--secondary-pdf")

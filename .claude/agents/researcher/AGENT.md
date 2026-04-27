@@ -59,13 +59,18 @@ After completing web research, verify key factual claims for accuracy.
    - `verified`: 2+ independent sources (grade 'official' or 'academic') agree
    - `partially_verified`: 1 source, or 2+ 'blog'-grade sources agree
    - `unverified`: 0 sources found
-6. Tag unverified claims in the research report with `[UNVERIFIED]`
+6. Assign `allowed_usage` for each extracted claim:
+   - `safe_to_state`: verified, directly usable in chapter prose with citation
+   - `state_with_hedge`: partially verified or context-dependent; must be hedged in prose
+   - `background_only`: useful for framing but too weak or broad to state as a factual claim
+   - `do_not_use`: contradicted, unsupported, outdated, or unsafe to repeat
+7. Tag unverified claims in the research report with `[UNVERIFIED]`
 
 **Verification Threshold**:
 - If fewer than 70% of extracted claims are `verified`, conduct additional searches and retry (max 2 rounds)
 - If still below threshold after retries, log gaps to `output/logs/step_1_verification_gap.md` and proceed
 
-**Output**: Generate two additional files alongside the research report:
+**Output**: Generate three additional files alongside the research report:
 
 `output/research/verification_report.json`:
 ```json
@@ -110,6 +115,26 @@ Source grades: `official` > `academic` > `news` > `blog`
 
 Note: `verification_report.json` references sources by `id` from `citations.json` (via `source_ids` field) to avoid data duplication.
 
+`output/research/claim_ledger.json` (structured evidence ledger):
+```json
+{
+  "claims": [
+    {
+      "id": "claim_001",
+      "text": "The specific factual claim text",
+      "topic_tags": ["topic", "subtopic"],
+      "source_ids": [1, 3],
+      "supporting_excerpt": "Short excerpt or concise paraphrase of the supporting evidence",
+      "confidence": "verified",
+      "allowed_usage": "safe_to_state",
+      "notes": ""
+    }
+  ]
+}
+```
+
+Every claim in `verification_report.json` must appear in `claim_ledger.json`. Do not include body-usable claims without at least one valid `source_id` from `citations.json`.
+
 ### Phase 3: Plugin-Specific Research (if plugin exists)
 
 If a plugin research sources file is provided:
@@ -142,6 +167,7 @@ Write to `output/research/research_report.md` using this structure.
 Additionally, generate:
 - `output/research/verification_report.json` — Cross-verification results with confidence scores and search queries
 - `output/research/citations.json` — Master source database (all sources with grades, used by downstream agents)
+- `output/research/claim_ledger.json` — Structured claim/source usage ledger for chapter packs
 
 Report structure:
 
@@ -199,6 +225,7 @@ After writing the report, re-read it entirely and assess:
 2. **Sufficient depth?** — Does each topic cluster have at least 2 source-backed findings?
 3. **Actionable for outline?** — Could an architect design a complete book outline from this report alone?
 4. **Cross-verification rate?** — Is the verification rate ≥ 70% for key factual claims? (Check `verification_report.json`)
+5. **Claim ledger validity?** — Does `claim_ledger.json` pass validation against `citations.json`?
 
 If any topic area has fewer than 2 source-backed findings:
 1. Generate additional research questions for that area
@@ -212,3 +239,4 @@ When the research report is complete and validated, return the output paths:
 - `output/research/research_report.md`
 - `output/research/verification_report.json`
 - `output/research/citations.json`
+- `output/research/claim_ledger.json`
