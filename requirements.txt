@@ -3,4 +3,7 @@ markdown>=3.5
 pymdown-extensions>=10.0
 Pygments>=2.17
 google-genai>=1.0.0
+god-tibo-imagen>=0.2.0
+openai>=1.40.0
 pymupdf>=1.24.0
+pytest>=8.0
