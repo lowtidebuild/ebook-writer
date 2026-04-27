@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 insert_images.py - Replace [IMAGE: ...] markers in chapter files with
-generated image links or failure placeholders.
+generated image links or neutral caption fallbacks.
 
 Usage:
-    python3 insert_images.py <manifest_json_path> <chapters_dir>
+    .venv/bin/python3 .claude/skills/image-generator/scripts/insert_images.py <manifest_json_path> <chapters_dir>
 
 Example:
-    python3 insert_images.py output/images/image_manifest.json output/chapters/ko/
+    .venv/bin/python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/ko/
 """
 
 import json
@@ -36,7 +36,7 @@ def build_replacement(entry: dict, chapter_path: Path) -> str:
         relative_path = relative_path.replace(os.sep, "/")
         return f"![{description}]({relative_path})"
 
-    # Failed/pending images should not leak production failure placeholders
+    # Failed/pending images should not leak production failure markers
     # into reader-facing chapters. The manifest remains blocking in final
     # preflight, while the chapter receives a neutral caption fallback.
     return f"> _Image omitted: {description}_"
@@ -111,7 +111,7 @@ def insert_images(manifest_path: str, chapters_dir: str) -> None:
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print("Usage: python3 insert_images.py <manifest_json_path> <chapters_dir>", file=sys.stderr)
+        print("Usage: .venv/bin/python3 .claude/skills/image-generator/scripts/insert_images.py <manifest_json_path> <chapters_dir>", file=sys.stderr)
         sys.exit(1)
 
     manifest_path = sys.argv[1]

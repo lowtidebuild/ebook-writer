@@ -2,8 +2,8 @@
 """Parse reference files and extract text content.
 
 Usage:
-    python3 parse_references.py <file_path>
-    python3 parse_references.py <file_path> --output-dir output/research/reference_chunks/source_pdf/
+    .venv/bin/python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path>
+    .venv/bin/python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path> --output-dir output/research/reference_chunks/source_pdf/
 
 Supports: .md, .txt, .pdf, .docx
 Output: JSON to stdout. With --output-dir, stdout contains only status and

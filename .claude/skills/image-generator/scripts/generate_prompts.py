@@ -2,7 +2,7 @@
 """Generate image prompts from templates based on image type classification.
 
 Usage:
-    python3 generate_prompts.py \
+    .venv/bin/python3 .claude/skills/image-generator/scripts/generate_prompts.py \
         --manifest output/images/image_manifest.json \
         --templates .claude/skills/image-generator/references/prompt_templates/ \
         --style-guide .claude/skills/image-generator/references/image_style_guide.md

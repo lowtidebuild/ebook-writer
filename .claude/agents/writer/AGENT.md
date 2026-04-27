@@ -72,10 +72,10 @@ Write in the **specified writing language**, following this structure:
        print(result)
        # Expected output: 4
        ```
-   - Validate syntax using code-example-validator skill:
-     ```bash
-     python3 .claude/skills/code-example-validator/scripts/validate_code.py <chapter_file>
-     ```
+     - Validate syntax using code-example-validator skill:
+       ```bash
+       .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py <chapter_file>
+       ```
 
 4. **Image Markers**: Place `[IMAGE: description]` markers **sparingly** — only where a visual genuinely aids comprehension:
    - **DO use for**: Architecture/workflow diagrams, comparison tables, annotated screenshots, step-by-step process flows

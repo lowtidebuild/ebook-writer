@@ -16,10 +16,10 @@ The provider for each entry is set by generate_prompts.py based on image_type
 in the manifest before running this script.
 
 Usage:
-    python3 generate_images.py <manifest_json_path>
+    .venv/bin/python3 .claude/skills/image-generator/scripts/generate_images.py <manifest_json_path>
 
 Example:
-    python3 generate_images.py output/images/image_manifest.json
+    .venv/bin/python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
 
 Environment variables:
     GEMINI_API_KEY        - Required when any entry uses provider="gemini"
@@ -313,7 +313,7 @@ def generate_images(manifest_path: str) -> None:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print("Usage: python3 generate_images.py <manifest_json_path>", file=sys.stderr)
+        print("Usage: .venv/bin/python3 .claude/skills/image-generator/scripts/generate_images.py <manifest_json_path>", file=sys.stderr)
         sys.exit(1)
 
     manifest_path = sys.argv[1]

@@ -15,7 +15,7 @@
 
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-7c3aed?style=flat-square&logo=anthropic&logoColor=white)](https://claude.ai/claude-code)
 [![PDF Engine](https://img.shields.io/badge/PDF-WeasyPrint-2563eb?style=flat-square)](https://weasyprint.org/)
-[![Images](https://img.shields.io/badge/Images-Gemini_API-f59e0b?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Images](https://img.shields.io/badge/Images-Diagram_%2B_Gemini-f59e0b?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Viewer](https://img.shields.io/badge/Viewer-PDF.js-e11d48?style=flat-square)](https://mozilla.github.io/pdf.js/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-22c55e?style=flat-square)](LICENSE)
 
@@ -76,18 +76,18 @@
 
 <br>
 
-## 🛡 v3: Ground Truth Architecture
+## 🛡 구현된 품질 제어
 
-할루시네이션을 줄이고 결과물 품질을 높이는 빌트인 검증 시스템:
+할루시네이션, 눈에 보이는 산출물 결함, 최종 빌드 오류를 줄이는 실제 구현 기준 검증 시스템:
 
 | 기능 | 작동 방식 |
 |------|----------|
 | **교차 검증** | Researcher가 핵심 주장(통계, 날짜, 법률, API 스펙)을 2+ 독립 소스로 검증. `verification_report.json`에 신뢰도 점수 기록. |
 | **인용 추적** | `citations.json` 마스터 DB가 Writer(`[^N]` 각주) &rarr; Editor(검증) &rarr; Translator(보존) &rarr; PDF(참고문헌)로 전달. |
-| **코드 실행 검증** | `:runnable` 태그된 코드 블록을 샌드박스에서 실행 (30초 타임아웃). 예상 출력과 실제 출력 비교. |
-| **레퍼런스 검증** | `validate_references.py`가 깨진 크로스레퍼런스 탐지 (예: "9장 참조"인데 9장이 없는 경우). |
-| **이미지 프롬프트 템플릿** | 6개 유형별 템플릿(architecture, process_flow, comparison, concept, metaphor, generic)으로 수동 프롬프트 작성 대체. |
-| **Vision 품질 검증** | 오케스트레이터가 생성된 이미지를 스타일 가이드 대비 평가. 점수 미달 시 재생성. |
+| **코드 실행 검증** | `:runnable` 블록은 Docker 격리에서 실행. 로컬 process 실행은 `--allow-unsafe-process` 명시 opt-in이 필요하며, 명백한 네트워크 사용은 실행 전 차단. |
+| **레퍼런스 검증** | `validate_references.py`가 깨진 챕터 참조를 탐지하고, `citations.json` 기준 inline citation ID도 검증 가능. |
+| **이미지 파이프라인** | 텍스트가 많은 다이어그램은 기본적으로 로컬 SVG renderer를 사용하고, 일러스트 이미지는 Gemini를 사용할 수 있음. OpenAI/Codex는 명시적 override. |
+| **최종 Preflight** | Gate 2 전에 unresolved image, placeholder, PDF/viewer 결함을 blocking issue로 차단. |
 
 <br>
 
@@ -115,7 +115,7 @@ graph TD
     Ed --> VC["검증된 챕터"]
     Tr --> TC["번역된 챕터"]
 
-    Ch --> IG["🎨 이미지 생성<br/>(Gemini)"]
+    Ch --> IG["🎨 이미지 생성<br/>(Diagram + Gemini)"]
     Ch --> PB["📕 PDF 빌더<br/>(WeasyPrint)"]
     Ch --> WV["💻 웹 뷰어<br/>(PDF.js)"]
 
@@ -167,7 +167,7 @@ graph TD
 | 📄 | `reference-analyzer` | .md/.pdf/.docx 파싱 | `parse_references.py` |
 | ✅ | `code-example-validator` | 문법 검증 + **`:runnable` 실행** + **크로스레퍼런스 검증** | `validate_code.py` `validate_references.py` |
 | 📋 | `quality-checker` | 품질 루브릭 + 도메인 기준 | — |
-| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **자동 분류** &rarr; **템플릿 프롬프트** &rarr; Gemini &rarr; **Vision QA** | 4개 스크립트 + 6개 템플릿 |
+| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **자동 분류** &rarr; **템플릿 프롬프트** &rarr; **타입별 provider 라우팅** (diagram / Gemini / OpenAI / Codex) &rarr; **최종 검증** | 4개 스크립트 + 6개 템플릿 |
 | 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5) + **각주** + **참고문헌** | `build_pdf.py` |
 | 💻 | `web-viewer-builder` | PDF.js 뷰어 + PyMuPDF TOC 추출 | `build_viewer.py` |
 
@@ -206,7 +206,7 @@ flowchart LR
 >
 > **Gate 2 거부?** &rarr; 지적된 챕터만 재편집 (부분 재생성)
 >
-> **이미지 실패?** &rarr; Non-blocking — placeholder 삽입 후 계속
+> **이미지 실패?** &rarr; 중립 caption은 삽입하지만 unresolved image는 최종 검증에서 계속 차단
 
 <br>
 
@@ -288,10 +288,22 @@ cd ebook-writer
 
 ### 2. 이미지 생성 설정 (선택)
 
+이미지 생성기는 `image_type`에 따라 provider를 라우팅합니다:
+
+- **`diagram`** — 텍스트가 많은 다이어그램(architecture / process_flow / comparison_table)의 기본값. 로컬 SVG renderer라 API key가 필요 없습니다.
+- **`gemini`** — 일러스트(concept_diagram, metaphor)의 기본 외부 provider.
+- **`openai`** — 유료 Images API (`gpt-image-*`). 명시적 override 시에만 사용.
+- **`codex`** — 선택적 [god-tibo-imagen](https://github.com/NomaDamas/god-tibo-imagen) 경로. 로컬 Codex CLI 인증을 쓰는 비공식 backend라 명시적 override 시에만 사용.
+
 ```bash
 # .env 파일 편집 (setup.sh가 자동 생성)
-GEMINI_API_KEY=your-key-here
+GEMINI_API_KEY=your-key-here       # provider=gemini 사용 시 필수
+OPENAI_API_KEY=your-key-here       # openai 오버라이드 사용 시에만 필요
+# CODEX_IMAGE_MODEL=gpt-5.4        # 선택; codex override 전용
+# IMAGE_PROVIDER=diagram|gemini|openai|codex  # 선택; 전체 강제 오버라이드
 ```
+
+기본 경로에는 Codex 이미지 인증이 필요 없습니다. 선택적 `codex` provider는 이미지 생성 권한이 있는 계정으로 `codex login`이 되어 있어야 작동합니다.
 
 ### 3. 실행
 
@@ -331,7 +343,7 @@ GEMINI_API_KEY=your-key-here
 │   │   ├── reference-analyzer/             ← .md/.pdf/.docx 파서
 │   │   ├── code-example-validator/         ← 문법 검증
 │   │   ├── quality-checker/                ← 품질 루브릭
-│   │   ├── image-generator/                ← Gemini API 파이프라인
+│   │   ├── image-generator/                ← Diagram/Gemini/OpenAI/Codex 파이프라인
 │   │   ├── pdf-builder/                    ← WeasyPrint 단행본 PDF
 │   │   └── web-viewer-builder/             ← PDF.js 브라우저 뷰어
 │   │

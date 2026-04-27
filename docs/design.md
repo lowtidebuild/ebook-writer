@@ -16,8 +16,8 @@ An automated ebook generation agent system that takes a topic as input and produ
 | Type | Format | Source/Destination | Notes |
 |------|--------|-------------------|-------|
 | Input — Topic | Natural language text | User CLI input | e.g., "Claude Code for Lawyers" |
-| Input — Domain plugin | Plugin directory | `/.claude/plugins/{domain}/` | Optional. Without it, runs in general-purpose mode |
-| Input — Reference materials | .md, .pdf, .docx | `/input/references/` | Source materials specified by plugin |
+| Input — Domain plugin | Plugin directory | `/.claude/plugins/{domain}/` | Optional and explicit (`--plugin <domain>`). Without it, runs in general-purpose mode |
+| Input — Reference materials | .md, .txt, .pdf, .docx | `/input/references/` | User or plugin-provided source materials; chunked before agent use |
 | Output — Markdown manuscripts | .md (per chapter) | `/output/chapters/ko/`, `/output/chapters/en/` | Korean original + English translation |
 | Output — Images | .png/.svg | `/output/images/` | Infographics, diagrams per chapter |
 | Output — PDF | .pdf | `/output/final/book_ko.pdf`, `book_en.pdf` | Typeset final book |
@@ -25,9 +25,9 @@ An automated ebook generation agent system that takes a topic as input and produ
 
 ### 1.4 Constraints
 
-- **Quality first**: Time/token cost is not a constraint. Each step must work thoroughly with proper validation; quality takes priority over speed
+- **Quality first with bounded context**: Each step must validate outputs thoroughly, while large references and cross-step context are summarized or chunked before agent use
 - **Minimal human intervention**: Only two gates — outline approval + final review
-- **Image generation API dependency**: Dependent on external image generation API (Gemini etc.) availability and rate limits
+- **Image generation provider dependency**: Text-heavy diagrams are rendered locally as SVG by default. Gemini/OpenAI/Codex are optional external providers and subject to their own availability/rate limits; Codex is an unsupported override path
 - **Claude Code environment**: Agent operates on Claude Code's Task tool (sub-agents), file system, and web search
 
 ### 1.5 Terminology
@@ -93,31 +93,32 @@ An automated ebook generation agent system that takes a topic as input and produ
 
 #### Step 1: Research
 
-- **Executor**: LLM (web search + reference material analysis)
-- **Input**: Topic (natural language), plugin research source list (if present), reference materials in `/input/references/`
+- **Executor**: LLM (web search + bounded reference chunk analysis)
+- **Input**: Topic (natural language), plugin research source list (if explicitly selected), reference chunk manifest from `/output/research/reference_chunks/`
 - **Processing**:
   1. Decompose topic into granular research questions (e.g., "What is Claude Code?", "Current state of AI in legal practice", "How to install Claude Code")
   2. Collect latest information via web search
   3. If plugin exists, collect additional information from plugin-specified sources (e.g., legal plugin → legislation/case law)
-  4. If reference materials exist, analyze and extract key content
-  5. Structure collected information by topic into a research report
-- **Output**: `/output/research/research_report.md` — research results organized by topic, with sources
-- **Success criteria**: Minimum research question count met; each question has at least one source-backed answer
-- **Validation method**: LLM self-check — read the research report and judge "Is there sufficient information to design a book outline on this topic?"
+  4. If reference materials exist, select relevant chunks from the manifest instead of loading full files
+  5. Structure collected information into a research report, citations DB, verification report, and claim ledger
+  6. Build `source_cache.json` and `research_summary_for_outline.md`
+- **Output**: `/output/research/research_report.md`, `verification_report.json`, `citations.json`, `claim_ledger.json`, `source_cache.json`, `research_summary_for_outline.md`
+- **Success criteria**: Minimum research question count met; key factual claims have valid source IDs; claim ledger validates against citations
+- **Validation method**: Script + LLM self-check — `validate_claims.py ledger` plus research coverage review
 - **On failure**: Generate additional research questions for information-sparse areas and re-collect (max 2 retries)
 
 #### Step 2: Outline Design
 
 - **Executor**: LLM
-- **Input**: `/output/research/research_report.md`, plugin quality criteria (if present)
+- **Input**: `/output/research/research_summary_for_outline.md`, full research report as fallback, plugin quality criteria (if present)
 - **Processing**:
   1. Design part/chapter/section structure based on research report
   2. Specify per-chapter summary (2–3 sentences), key content to cover, estimated length
-  3. Specify inter-chapter dependencies (where a chapter references prior chapter content)
-  4. Design difficulty progression appropriate to reader level (easy → hard)
-- **Output**: `/output/outline/table_of_contents.md`
-- **Success criteria**: All major topics from the research report are placed; logical flow exists between chapters; each chapter includes summary/key content/estimated length
-- **Validation method**: LLM self-check — "Are there topics covered in research that are missing from the outline?", "Would a reader progressing from Chapter 1 onward find the flow natural?"
+  3. Emit structured `outline.json` with stable chapter IDs, slugs, key content, word estimates, and dependency IDs
+  4. Render `table_of_contents.md` from the JSON source of truth
+- **Output**: `/output/outline/outline.json`, `/output/outline/table_of_contents.md`
+- **Success criteria**: All major topics from the research summary are placed; dependency graph is valid; JSON and Markdown match
+- **Validation method**: Script — `validate_outline.py` checks required fields, duplicate IDs/slugs, bad dependencies, cycles, and rendered Markdown consistency
 - **On failure**: Supplement missing topics and regenerate (max 2 retries)
 
 **═══ Gate 1: Outline Approval ═══**
@@ -128,46 +129,49 @@ An automated ebook generation agent system that takes a topic as input and produ
 #### Step 3: Chapter Writing (parallel)
 
 - **Executor**: LLM (parallel Tasks per chapter)
-- **Input**: `/output/outline/table_of_contents.md`, `/output/research/research_report.md`, chapter-specific reference materials (if present), preceding chapter manuscripts (if dependency exists)
+- **Input**: `/output/outline/outline.json`, chapter pack JSON, dependency summaries, plugin path if explicitly selected
 - **Processing**:
   1. Chapters with no dependencies start writing in parallel
   2. Chapters with dependencies execute sequentially after their prerequisite completes
-  3. Each chapter is written based on the outline's summary/key content
-  4. Include working code examples where needed
-  5. Mark image-needed locations with `[IMAGE: description]` markers at end of chapter
+  3. Each chapter is written from its outline object and chapter evidence pack
+  4. Include only pack-allowed factual claims and source IDs
+  5. Include runnable code examples only when self-contained and expected output is specified
+  6. Mark image-needed locations with `[IMAGE: description]` markers sparingly
 - **Output**: `/output/chapters/ko/ch{NN}_{slug}.md` (per-chapter markdown)
-- **Success criteria**: All key content specified in outline is covered; explanation level matches target reader (zero coding experience); code examples are syntactically valid
-- **Validation method**: Rule-based — keyword inclusion check against outline's key content, markdown structure validity, code block syntax check
+- **Success criteria**: All key content specified in outline is covered; claim usage stays within the chapter pack; code examples are syntactically valid and runnable examples pass execution checks
+- **Validation method**: Script — `validate_claims.py chapter`, code-example validator, chapter structure validator
 - **On failure**: Rewrite the failing chapter (max 2 retries)
 
 #### Step 4: Editing/Validation
 
 - **Executor**: LLM
-- **Input**: All chapters in `/output/chapters/ko/`, `/output/outline/table_of_contents.md`, plugin quality criteria (if present)
+- **Input**: Chapter directory, outline JSON/Markdown, chapter packs, dependency summaries, citations DB, claim validation results, cross-reference results, code execution results, plugin quality criteria if explicitly selected
 - **Processing**:
   1. Per-chapter quality review: content accuracy, clarity of explanation, reader-level appropriateness
   2. Apply domain plugin quality criteria (e.g., legal terminology accuracy, citation format)
   3. Cross-chapter consistency review: terminology unification, cross-reference integrity, tone consistency
-  4. Directly fix issues by overwriting chapter files
-  5. Generate edit report (change log, remaining issues)
+  4. Remove visible production artifacts (`[IMAGE:]`, failed image markers, TODO/TBD, generator credit)
+  5. Directly fix issues by overwriting chapter files
+  6. Generate edit report (change log, remaining issues)
 - **Output**: Revised `/output/chapters/ko/ch{NN}_{slug}.md` files + `/output/edit/edit_report.md`
 - **Success criteria**: Edit report states "no blocking issues"
-- **Validation method**: LLM self-check — assess whether remaining issues in the edit report are blocking-level
+- **Validation method**: Script + LLM self-check — automated validators first, then editor review focused on blocking issues
 - **On failure**: Return chapters with blocking issues to Step 3 for rewrite (max 2 retries). After 2 retries, log the issue and let the human decide at Gate 2
 
 #### Step 5: Image Generation
 
-- **Executor**: Script (image generation API calls) + LLM (prompt writing)
+- **Executor**: Script pipeline (marker extraction, prompt templating, provider dispatch, validation)
 - **Input**: `[IMAGE: description]` markers from edited chapters
 - **Processing**:
   1. Script extracts all `[IMAGE: ...]` markers from all chapters into a list
-  2. LLM writes image generation prompts for each marker (matching book's tone/style)
-  3. Script calls image generation API (with rate limit management)
-  4. Insert generated images into chapter markdown (`[IMAGE: ...]` → `![alt](path)`)
-- **Output**: `/output/images/ch{NN}_img{NN}.png` + chapters with images inserted
-- **Success criteria**: All `[IMAGE: ...]` markers replaced with actual images; image files are not corrupted (file size > 0)
-- **Validation method**: Script — check for remaining markers, verify image file existence/size
-- **On failure**: Revise prompt and regenerate for failed images (max 2 retries). If still failing, insert placeholder text + log
+  2. Classify image type and apply prompt templates
+  3. Route text-heavy diagrams to local SVG `diagram` provider by default; use Gemini/OpenAI/Codex only when configured
+  4. Insert completed images using manifest `output_path`; failed entries receive neutral caption fallback text
+  5. Validate the manifest and chapter replacements
+- **Output**: `/output/images/*.{svg,png}` + chapters with images or neutral captions inserted
+- **Success criteria**: No raw `[IMAGE: ...]` markers remain; completed image files exist; unresolved failed/pending entries are surfaced before final review
+- **Validation method**: Script — `validate_images.py`, `validate_chapters.py`, and final preflight
+- **On failure**: Continue the pipeline with neutral captions, but keep unresolved manifest entries blocking unless explicitly approved
 
 #### Step 6: Translation (KO→EN)
 
@@ -180,7 +184,7 @@ An automated ebook generation agent system that takes a topic as input and produ
   4. Image paths: shared (same images used)
 - **Output**: `/output/chapters/en/ch{NN}_{slug}.md`
 - **Success criteria**: 1:1 structural correspondence with Korean original; code blocks preserved; image references maintained
-- **Validation method**: Script — KO/EN chapter count match, code block count match, image reference count match. LLM self-check — quality review of 1–2 sample chapters
+- **Validation method**: Script — KO/EN chapter count, heading structure, code block count, image reference count, and footnote marker preservation. LLM self-check — quality review of 1–2 sample chapters
 - **On failure**: Re-translate structurally mismatched chapters (max 2 retries)
 
 #### Step 7: PDF Typesetting
@@ -200,17 +204,17 @@ An automated ebook generation agent system that takes a topic as input and produ
 
 #### Step 8: Web Viewer Generation
 
-- **Executor**: Script + LLM (viewer code generation)
-- **Input**: `/output/chapters/ko/`, `/output/chapters/en/`, `/output/images/`
+- **Executor**: Script
+- **Input**: primary PDF, optional secondary PDF, viewer template
 - **Processing**:
-  1. LLM generates web viewer HTML/CSS/JS with page-flip animation
-  2. Convert markdown chapters to web-viewer-insertable format
-  3. Include KO/EN language toggle
-  4. Support mobile touch + desktop mouse
-  5. Output as GitHub Pages-deployable structure
+  1. Build a PDF.js HTML viewer from the finalized PDF files
+  2. Extract chapter TOC data from PDFs at build time
+  3. Include language toggle only when a secondary PDF exists
+  4. Support mobile touch + desktop keyboard navigation
+  5. Output as GitHub Pages-deployable static files
 - **Output**: `/output/web-viewer/` (index.html + assets)
 - **Success criteria**: index.html renders correctly locally; chapter navigation works; KO/EN toggle works
-- **Validation method**: Script — HTML file existence, basic structure check (all chapter file references present)
+- **Validation method**: Script — `validate_web_viewer.py` checks template placeholders, PDF references, PDF.js presence, and single-language toggle behavior
 - **On failure**: Output error log and escalate
 
 **═══ Gate 2: Final Review ═══**
@@ -435,10 +439,11 @@ Plugins reside in `/.claude/plugins/{domain}/` with the following files:
 - **Rejected because**: LaTeX has high installation/debugging complexity. Puppeteer requires headless Chrome dependency. Pandoc lacks fine-grained typesetting control
 - **Trade-off**: Layout limited to WeasyPrint's CSS support range. Advanced print typesetting (kerning, ligatures) not supported
 
-**Decision 4: Image generation — Gemini API**
-- **Alternative**: DALL-E, local Stable Diffusion, SVG/Mermaid code generation
-- **Rejected because**: SVG/Mermaid has infographic quality limits. Local Stable Diffusion has environment setup burden. DALL-E is also viable but Gemini is currently accessible
-- **Trade-off**: External API dependency, rate limit management needed, image style consistency must be controlled via prompts
+**Decision 4: Image generation — diagram-first type routing**
+- **Alternative**: single-provider Gemini, single-provider Images API, local Stable Diffusion, Codex-only private backend, manual SVG/Mermaid authoring
+- **Rationale**: Text-heavy diagrams need deterministic labels more than photorealistic rendering, so `architecture`, `process_flow`, and `comparison_table` default to the local SVG `diagram` provider. Illustrative images can use Gemini. OpenAI and Codex remain explicit overrides for users who accept their cost/support tradeoffs.
+- **Rejected because**: Single-provider Gemini struggles with text-heavy diagrams. Single-provider paid OpenAI is unnecessarily expensive for default illustrative images. Codex/god-tibo-imagen depends on an unsupported private backend. Manual Mermaid/SVG generation is too rigid for every visual type.
+- **Trade-off**: Local SVG diagrams are more reliable and cheaper but less visually rich than image models. External providers remain optional and failures are surfaced through final validation rather than hidden as visible production artifacts.
 
 **Decision 5: Web viewer — single HTML file (turn.js or equivalent library)**
 - **Alternative**: React SPA, Next.js SSG, PDF.js viewer
@@ -459,8 +464,8 @@ Plugins reside in `/.claude/plugins/{domain}/` with the following files:
 
 ## 6. Open Items / Future Considerations
 
-- **Image style consistency**: To unify image tone/style across the entire book, standardize a style prefix in image generation prompts. Adjust prompt templates after reviewing first run results
-- **Code example execution validation**: Current design only validates syntax. A step to actually execute and verify behavior could be added later (sandbox execution in Claude Code environment)
+- **Image style consistency**: Continue tuning prompt templates and local diagram styling after reviewing generated book outputs
+- **Token budget measurement**: Measure actual context sizes for Researcher, Architect, Writer, and Editor after chunking/summaries to set hard payload budgets
 - **Auto-detection of inter-chapter dependencies**: Currently the Architect explicitly specifies dependencies during outline design. Future enhancement: auto-detect via research report analysis
 - **Additional domain plugins**: Plugins for other domains (medical, finance, engineering) can be added using the same structure. Plugin authoring guide documentation needed
 - **Incremental updates**: A partial regeneration pipeline for updating specific chapters post-publication and re-typesetting. Currently Gate 2 rejection supports partial fixes, but an independent update mode is not yet implemented

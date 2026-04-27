@@ -2,9 +2,9 @@
 """Validate code examples in markdown chapter files.
 
 Usage:
-    python3 validate_code.py <markdown_file>              # Syntax validation
-    python3 validate_code.py --execute <file_or_directory> # Execute :runnable blocks
-    python3 validate_code.py --execute --sandbox docker <file_or_directory>
+    .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py <markdown_file>
+    .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute <file_or_directory>
+    .venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox docker <file_or_directory>
 
 Extracts fenced code blocks and validates syntax per language.
 With --execute, runs :runnable tagged blocks and checks expected output.

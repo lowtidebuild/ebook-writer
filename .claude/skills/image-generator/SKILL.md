@@ -20,7 +20,7 @@ The skill operates as a 4-step script pipeline executed in order:
 Scans all `.md` chapter files for `[IMAGE: description]` patterns and produces an `image_manifest.json` listing every marker with its location, description, and a pending status.
 
 ```bash
-python3 scripts/extract_markers.py output/chapters/ko/ output/images/image_manifest.json
+.venv/bin/python3 .claude/skills/image-generator/scripts/extract_markers.py output/chapters/ko/ output/images/image_manifest.json
 ```
 
 ### Step 2: Classify & Generate Prompts (`generate_prompts.py`)
@@ -28,10 +28,10 @@ python3 scripts/extract_markers.py output/chapters/ko/ output/images/image_manif
 The orchestrator first classifies each marker's `image_type` (concept_diagram, process_flow, comparison_table, architecture, metaphor) based on the description. Then `generate_prompts.py` applies type-specific prompt templates from `references/prompt_templates/` to generate prompts, assigns each entry a `provider`, and fills `output_path` with the provider-specific extension. Set `IMAGE_PROVIDER=diagram|codex|gemini|openai` to override globally.
 
 ```bash
-python3 scripts/generate_prompts.py \
+.venv/bin/python3 .claude/skills/image-generator/scripts/generate_prompts.py \
   --manifest output/images/image_manifest.json \
-  --templates references/prompt_templates/ \
-  --style-guide references/image_style_guide.md
+  --templates .claude/skills/image-generator/references/prompt_templates/ \
+  --style-guide .claude/skills/image-generator/references/image_style_guide.md
 ```
 
 This replaces the previous manual prompt writing step. Template files: `concept_diagram.txt`, `process_flow.txt`, `comparison_table.txt`, `architecture.txt`, `metaphor.txt`, `generic.txt` (fallback).
@@ -41,7 +41,7 @@ This replaces the previous manual prompt writing step. Template files: `concept_
 Reads the manifest and dispatches every pending entry to the backend named by its `provider` field — `diagram` (local SVG), `gemini` (Google Gemini), `openai` (paid Images API), or `codex` (optional god-tibo-imagen via Codex CLI auth). Saves each file and marks the entry `completed` or `failed`.
 
 ```bash
-python3 scripts/generate_images.py output/images/image_manifest.json
+.venv/bin/python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
 ```
 
 Provider requirements:
@@ -62,7 +62,7 @@ The orchestrator reads each generated image and evaluates it against the style g
 Replaces every `[IMAGE: ...]` marker in the chapter files with either the generated image link or a neutral caption fallback. Completed entries use the manifest's `output_path` directly, so provider-specific file extensions such as `.png` and `.svg` are preserved.
 
 ```bash
-python3 scripts/insert_images.py output/images/image_manifest.json output/chapters/ko/
+.venv/bin/python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/ko/
 ```
 
 ## When to Use

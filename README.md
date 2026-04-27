@@ -15,7 +15,7 @@
 
 [![Built with Claude Code](https://img.shields.io/badge/Built_with-Claude_Code-7c3aed?style=flat-square&logo=anthropic&logoColor=white)](https://claude.ai/claude-code)
 [![PDF Engine](https://img.shields.io/badge/PDF-WeasyPrint-2563eb?style=flat-square)](https://weasyprint.org/)
-[![Images](https://img.shields.io/badge/Images-Gemini_API-f59e0b?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Images](https://img.shields.io/badge/Images-Diagram_%2B_Gemini-f59e0b?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Viewer](https://img.shields.io/badge/Viewer-PDF.js-e11d48?style=flat-square)](https://mozilla.github.io/pdf.js/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-22c55e?style=flat-square)](LICENSE)
 
@@ -76,18 +76,18 @@ The pipeline runs automatically with only **two human checkpoints**:
 
 <br>
 
-## 🛡 v3: Ground Truth Architecture
+## 🛡 Implemented Quality Controls
 
-Built-in quality guarantees that reduce hallucinations and improve output:
+Implemented checks that reduce hallucinations, visible artifacts, and broken final outputs:
 
 | Feature | How It Works |
 |---------|-------------|
 | **Cross-Verification** | Researcher validates key claims (stats, dates, legal refs) against 2+ independent sources. Confidence scores in `verification_report.json`. |
 | **Citation Tracking** | `citations.json` master DB flows through Writer (`[^N]` footnotes) &rarr; Editor (validation) &rarr; Translator (preservation) &rarr; PDF (bibliography). |
-| **Code Execution** | `:runnable` tagged code blocks are executed in a sandbox (30s timeout). Expected output is compared against actual output. |
-| **Reference Validation** | `validate_references.py` catches broken cross-references (e.g., "see Chapter 9" when Chapter 9 doesn't exist). |
-| **Image Prompt Templates** | 6 type-specific templates (architecture, process_flow, comparison, concept, metaphor, generic) replace manual prompt writing. |
-| **Vision Quality Review** | Orchestrator evaluates generated images against the style guide; low-scoring images get regenerated. |
+| **Code Execution** | `:runnable` blocks run in Docker isolation when available. Local process execution requires explicit `--allow-unsafe-process`; obvious network usage is blocked before execution. |
+| **Reference Validation** | `validate_references.py` catches broken chapter cross-references and can validate inline citation IDs against `citations.json`. |
+| **Image Pipeline** | Text-heavy diagrams use deterministic local SVG rendering by default; illustrative images can use Gemini; OpenAI/Codex are explicit overrides. |
+| **Final Preflight** | Final validators block unresolved image entries, visible placeholders, malformed PDFs, and broken viewer output before Gate 2. |
 
 <br>
 
@@ -113,7 +113,7 @@ graph TD
     Ed --> VC["Validated<br/>Chapters"]
     Tr --> TC["Translated<br/>Chapters"]
 
-    Ch --> IG["🎨 Image Generator<br/>(Gemini API)"]
+    Ch --> IG["🎨 Image Generator<br/>(Diagram + Gemini)"]
     Ch --> PB["📕 PDF Builder<br/>(WeasyPrint)"]
     Ch --> WV["💻 Web Viewer<br/>(PDF.js)"]
 
@@ -169,7 +169,7 @@ Reusable capabilities invoked by agents and the orchestrator:
 | 📄 | `reference-analyzer` | Parse .md / .pdf / .docx files | `parse_references.py` |
 | ✅ | `code-example-validator` | Syntax validation + **`:runnable` execution** + **cross-reference checking** | `validate_code.py` `validate_references.py` |
 | 📋 | `quality-checker` | Quality rubric + domain criteria | — |
-| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **auto-classify** &rarr; **template prompts** &rarr; Gemini API &rarr; **Vision QA** | 4 scripts + 6 templates |
+| 🎨 | `image-generator` | `[IMAGE:]` &rarr; **auto-classify** &rarr; **template prompts** &rarr; **type-routed providers** (diagram/Gemini/OpenAI/Codex) &rarr; **final validation** | 4 scripts + 6 templates |
 | 📕 | `pdf-builder` | Markdown &rarr; HTML &rarr; WeasyPrint (B5) + **footnotes** + **bibliography** | `build_pdf.py` |
 | 💻 | `web-viewer-builder` | PDF.js viewer with sidebar (PyMuPDF TOC extraction) | `build_viewer.py` |
 
@@ -208,7 +208,7 @@ flowchart LR
 >
 > **Gate 2 rejected?** &rarr; Re-edit only flagged chapters (partial regen)
 >
-> **Image failed?** &rarr; Non-blocking — placeholder inserted, pipeline continues
+> **Image failed?** &rarr; Neutral caption inserted, but final validation still blocks unresolved image entries
 
 <br>
 
@@ -290,10 +290,22 @@ cd ebook-writer
 
 ### 2. Set up image generation (optional)
 
+The image-generator routes each image to a provider based on its type:
+
+- **`diagram`** — default for text-heavy diagrams (architecture / process flow / comparison table). Deterministic local SVG, no API key.
+- **`gemini`** — default for illustrative images (concept diagrams, metaphors).
+- **`openai`** — paid Images API (`gpt-image-*`), explicit override only.
+- **`codex`** — optional [god-tibo-imagen](https://github.com/NomaDamas/god-tibo-imagen) path through local Codex CLI auth. Unsupported backend; explicit override only.
+
 ```bash
 # Edit .env (created by setup.sh)
-GEMINI_API_KEY=your-key-here
+GEMINI_API_KEY=your-key-here       # required if any image uses provider=gemini
+OPENAI_API_KEY=your-key-here       # required only for the openai override path
+# CODEX_IMAGE_MODEL=gpt-5.4        # optional; codex override only
+# IMAGE_PROVIDER=diagram|gemini|openai|codex  # optional global override
 ```
+
+The default path does not require Codex image credentials. The optional `codex` provider requires `codex login` on an account with image generation entitlement.
 
 ### 3. Generate
 
@@ -333,7 +345,7 @@ GEMINI_API_KEY=your-key-here
 │   │   ├── reference-analyzer/             ← .md/.pdf/.docx parser
 │   │   ├── code-example-validator/         ← Syntax validation
 │   │   ├── quality-checker/                ← Quality rubric
-│   │   ├── image-generator/                ← Gemini API pipeline
+│   │   ├── image-generator/                ← Diagram/Gemini/OpenAI/Codex pipeline
 │   │   ├── pdf-builder/                    ← WeasyPrint book-grade PDF
 │   │   └── web-viewer-builder/             ← PDF.js browser viewer
 │   │

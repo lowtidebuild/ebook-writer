@@ -1,21 +1,22 @@
 # Code Example Validator Skill
 
 ## Purpose
-Validate syntax correctness of code examples embedded in chapter markdown files.
+Validate code examples embedded in chapter markdown files, including syntax-only checks and opt-in execution for `:runnable` blocks.
 
 ## Capabilities
 1. Extract fenced code blocks from markdown files
 2. Validate syntax per language (Python, JavaScript, Bash, etc.)
-3. Report validation results as JSON
+3. Execute trusted `:runnable` examples in a sandbox backend
+4. Report validation results as JSON
 
 ## Scripts
 - `scripts/validate_code.py` — Extract and validate code blocks from a markdown file
 
 ## Usage
 ```bash
-python3 .claude/skills/code-example-validator/scripts/validate_code.py <markdown_file>
-python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/ko/
-python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox process --allow-unsafe-process output/chapters/ko/
+.venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py <markdown_file>
+.venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox auto output/chapters/ko/
+.venv/bin/python3 .claude/skills/code-example-validator/scripts/validate_code.py --execute --sandbox process --allow-unsafe-process output/chapters/ko/
 ```
 
 Output: JSON to stdout

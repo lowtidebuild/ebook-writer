@@ -30,7 +30,7 @@ Convert markdown chapters into a professionally typeset PDF book using WeasyPrin
 Install all at once:
 
 ```bash
-pip install weasyprint markdown pymdown-extensions Pygments
+.venv/bin/pip install weasyprint markdown pymdown-extensions Pygments
 ```
 
 ## Reference Files

@@ -4,10 +4,10 @@ extract_markers.py - Scan chapter markdown files for [IMAGE: ...] markers
 and produce an image_manifest.json.
 
 Usage:
-    python3 extract_markers.py <chapters_dir> <output_manifest_path>
+    .venv/bin/python3 .claude/skills/image-generator/scripts/extract_markers.py <chapters_dir> <output_manifest_path>
 
 Example:
-    python3 extract_markers.py output/chapters/ko/ output/images/image_manifest.json
+    .venv/bin/python3 .claude/skills/image-generator/scripts/extract_markers.py output/chapters/ko/ output/images/image_manifest.json
 """
 
 import json
@@ -83,7 +83,7 @@ def extract_markers(chapters_dir: str, output_manifest_path: str) -> None:
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print("Usage: python3 extract_markers.py <chapters_dir> <output_manifest_path>", file=sys.stderr)
+        print("Usage: .venv/bin/python3 .claude/skills/image-generator/scripts/extract_markers.py <chapters_dir> <output_manifest_path>", file=sys.stderr)
         sys.exit(1)
 
     chapters_dir = sys.argv[1]

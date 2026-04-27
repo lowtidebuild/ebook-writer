@@ -15,7 +15,7 @@ Generate a PDF.js-based web ebook viewer from the typeset PDFs. The viewer rende
 ### Usage
 
 ```bash
-python3 build_viewer.py \
+.venv/bin/python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
   --pdf-primary output/final/book_ko.pdf \
   --pdf-secondary output/final/book_en.pdf \
   --output output/web-viewer/ \

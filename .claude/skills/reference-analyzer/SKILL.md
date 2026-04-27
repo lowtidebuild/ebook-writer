@@ -14,8 +14,8 @@ Parse and extract key content from reference materials in various formats (.md, 
 
 ## Usage
 ```bash
-python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path>
-python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path> \
+.venv/bin/python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path>
+.venv/bin/python3 .claude/skills/reference-analyzer/scripts/parse_references.py <file_path> \
   --output-dir output/research/reference_chunks/<source_name>/
 ```
 
@@ -33,6 +33,18 @@ Output: JSON to stdout
 Prefer `--output-dir` in the ebook pipeline. In that mode stdout contains only
 status, word count, chunk count, and manifest path; extracted text is written to
 bounded chunk JSON files under `output/research/reference_chunks/`.
+
+Chunked stdout example:
+```json
+{
+  "filename": "reference.pdf",
+  "content_type": "pdf",
+  "word_count": 1500,
+  "chunk_count": 3,
+  "manifest_path": "output/research/reference_chunks/reference_pdf/manifest.json",
+  "status": "success"
+}
+```
 
 ## When to Use
 - Researcher Agent processes files in `input/references/`

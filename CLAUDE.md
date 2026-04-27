@@ -365,7 +365,7 @@ This step uses dependency-wave-based parallel execution:
 
 1. **Extract markers**:
    ```bash
-   python3 .claude/skills/image-generator/scripts/extract_markers.py output/chapters/{state.primary_language}/ output/images/image_manifest.json
+   .venv/bin/python3 .claude/skills/image-generator/scripts/extract_markers.py output/chapters/{state.primary_language}/ output/images/image_manifest.json
    ```
 
 2. **Classify and generate prompts**:
@@ -379,7 +379,7 @@ This step uses dependency-wave-based parallel execution:
    - Update the manifest entry with `image_type` field
    - Run prompt generation:
      ```bash
-     python3 .claude/skills/image-generator/scripts/generate_prompts.py \
+     .venv/bin/python3 .claude/skills/image-generator/scripts/generate_prompts.py \
        --manifest output/images/image_manifest.json \
        --templates .claude/skills/image-generator/references/prompt_templates/ \
        --style-guide .claude/skills/image-generator/references/image_style_guide.md
@@ -401,9 +401,9 @@ This step uses dependency-wave-based parallel execution:
 
 3. **Generate images**:
    ```bash
-   python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
+   .venv/bin/python3 .claude/skills/image-generator/scripts/generate_images.py output/images/image_manifest.json
    ```
-   Diagram provider entries are rendered locally as SVG files. Model provider failures are recorded in the manifest and remain blocking in preflight; do not rely on visible failure placeholders.
+   Diagram provider entries are rendered locally as SVG files. Model provider failures are recorded in the manifest and remain blocking in preflight; do not rely on visible failure markers.
 
 4. **Quality and file review**:
    ```bash
@@ -418,7 +418,7 @@ This step uses dependency-wave-based parallel execution:
 
 5. **Insert images**:
    ```bash
-   python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/{state.primary_language}/
+   .venv/bin/python3 .claude/skills/image-generator/scripts/insert_images.py output/images/image_manifest.json output/chapters/{state.primary_language}/
    ```
    Failed or pending image entries are replaced with neutral caption fallback text only. They are still blocking through `validate_images.py` unless explicitly approved.
 
@@ -433,7 +433,7 @@ This step uses dependency-wave-based parallel execution:
    ```
 7. Update state: steps.image_generation.status = "completed", steps.image_generation.quality_review_status = "completed", last_completed_step = "image_generation"
 
-**Note**: Image generation failures are **non-blocking**. Failed images get placeholder text. The pipeline continues regardless.
+**Note**: Image provider failures do not stop marker insertion, but failed or pending manifest entries remain blocking in `validate_images.py` and final preflight unless explicitly approved.
 
 ### Step 6: Translation (Primary → Secondary Language, Parallel)
 
@@ -506,7 +506,7 @@ This step uses dependency-wave-based parallel execution:
 
 1. Build the web viewer (PDF.js-based):
    ```bash
-   python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
+   .venv/bin/python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
      --pdf-primary output/final/book_{state.primary_language}.pdf \
      --pdf-secondary output/final/book_{state.secondary_language}.pdf \  # omit if not bilingual
      --output output/web-viewer/ \
@@ -606,26 +606,8 @@ This step uses dependency-wave-based parallel execution:
 1. **Quality over speed**: Do not rush steps. Each step should work thoroughly
 2. **Primary language first**: All content is written in the primary language, then translated to the secondary language
 3. **Code correctness**: All code examples must be syntactically valid
-4. **Image fallback**: Never block the pipeline on image generation failures
+4. **Image fallback**: Continue generation after provider failures, but keep unresolved image entries blocking in final validation unless explicitly approved
 5. **State consistency**: Always update pipeline_state.json after step completion, never during
-
-## Skill routing
-
-When the user's request matches an available skill, ALWAYS invoke it using the Skill
-tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
-The skill has specialized workflows that produce better results than ad-hoc answers.
-
-Key routing rules:
-- Product ideas, "is this worth building", brainstorming → invoke office-hours
-- Bugs, errors, "why is this broken", 500 errors → invoke investigate
-- Ship, deploy, push, create PR → invoke ship
-- QA, test the site, find bugs → invoke qa
-- Code review, check my diff → invoke review
-- Update docs after shipping → invoke document-release
-- Weekly retro → invoke retro
-- Design system, brand → invoke design-consultation
-- Visual audit, design polish → invoke design-review
-- Architecture review → invoke plan-eng-review
 
 ## Security
 

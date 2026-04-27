@@ -1,16 +1,17 @@
 # TODOS
 
-## v3 Ground Truth Architecture
+## 구현된 품질 제어
 
 ### Eng Review 발견사항 (2026-03-30)
-- [ ] **pytest 테스트 스위트** — 42개 코드 경로 커버리지. tests/ 디렉토리 신규. 우선순위: validate_code.py > validate_references.py > generate_prompts.py > build_pdf.py. 테스트 플랜: `~/.gstack/projects/lowtidebuild-ebook-writer/main-eng-review-test-plan-*.md`
-- [ ] **citations.json ID 검증** — validate_references.py에 citation ID 존재 여부 검증 추가. Writer가 [^N]을 넣었는데 citations.json에 해당 ID가 없으면 에러 보고.
-- [ ] **Gate 2 전 자동 검증** — CLAUDE.md Gate 2 직전에 체크리스트 추가: 모든 챕터 포함 여부, [IMAGE:] 마커 잔존 여부, 각주 렌더링 완전성.
-- [ ] **코드 블록 파싱 공유 모듈** — validate_code.py와 validate_references.py의 코드 블록 파싱 로직을 공유 모듈(markdown_utils.py)로 추출. DRY + O(n²) 성능 개선.
-- [ ] **순환 의존성 감지** — CLAUDE.md Step 3 웨이브 빌드에 DAG 순환 감지 추가. 순환 발견 시 에러 메시지 + 에스컬레이션.
+- [x] **pytest 테스트 스위트** — `tests/` 디렉토리 신규. pipeline state, outline, claims, chapter packs, final preflight, image pipeline, PDF/viewer, validator 경로 테스트 추가 및 통과 완료.
+- [x] **citations.json ID 검증** — `validate_references.py`에 citation ID 존재 여부 검증 추가. `--citations` 인자 및 `output/research/citations.json` 자동 탐지 지원.
+- [x] **Gate 2 전 자동 검증** — `CLAUDE.md` Gate 2 직전에 체크리스트 추가: 모든 챕터 포함 여부, `[IMAGE:]` 마커 잔존 여부, 각주 렌더링 완전성.
+- [x] **코드 블록 파싱 공유 모듈** — `validate_code.py`와 `validate_references.py`의 코드 블록 파싱 로직을 `markdown_utils.py`로 추출. DRY + O(n²) 성능 개선.
+- [x] **순환 의존성 감지** — `CLAUDE.md` Step 3 웨이브 빌드에 DAG 순환 감지 절차 추가. 순환 발견 시 에러 메시지 + 에스컬레이션 명시.
 
 ### v4 검토사항
-- [ ] **Docker 샌드박스** — :runnable 코드 실행 시 네트워크 격리/파일시스템 제한. 현재는 subprocess + 30초 타임아웃만 사용. 오픈소스 프로젝트로서 보안 강화 필요 시 Docker/nsjail 도입 검토.
+- [x] **Docker 샌드박스** — `validate_code.py --execute`에 Docker 백엔드 추가. `--network none`, read-only rootfs, tmpfs workspace, capability drop 적용. 로컬 process backend는 `--allow-unsafe-process` 명시 opt-in에서만 사용.
+- [x] **문서/프롬프트 정리** — pipeline 밖 skill routing 제거, `.venv/bin/python3` 실행 예시 통일, README/design/migration guide를 실제 구현 기준으로 동기화.
 
 ### 완료
 - [x] **build_pdf.py 하드코딩 날짜 수정** — `datetime.now()` 기반 동적 생성으로 변경 완료. build_pdf.py:527.

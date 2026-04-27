@@ -7,7 +7,7 @@ it as JSON in the HTML, so the sidebar works instantly without client-side
 PDF text scanning.
 
 Usage:
-    python3 build_viewer.py \
+    .venv/bin/python3 .claude/skills/web-viewer-builder/scripts/build_viewer.py \
         --pdf-primary output/final/book_ko.pdf \
         --pdf-secondary output/final/book_en.pdf \
         --output output/web-viewer/ \

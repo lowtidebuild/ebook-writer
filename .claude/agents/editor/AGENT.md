@@ -59,7 +59,7 @@ Using the data collected in Pass 1:
 4. **No Unnecessary Repetition**: Flag if the same concept is explained in detail in multiple chapters
    - Fix by keeping the most thorough explanation and referencing it from other chapters
 5. **Progressive Complexity**: Verify later chapters build on earlier ones appropriately
-6. **Cross-Reference Accuracy**: Review `validate_references.py` output. Any reference to a non-existent chapter is a **blocking issue**. Fix by correcting the chapter number or removing the reference.
+6. **Cross-Reference Accuracy**: Review `validate_references.py` output. Any reference to a non-existent chapter or citation ID missing from `citations.json` is a **blocking issue**. Fix by correcting the chapter number/citation ID or removing the reference.
 7. **Citation Consistency**: Verify the same source is cited with the same `[^N]` ID across chapters. No duplicate IDs with different sources.
 8. **Claim Boundary Consistency**: If a chapter needs a claim outside its pack, flag it for pack regeneration rather than silently borrowing another chapter's source.
 
