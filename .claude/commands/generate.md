@@ -38,6 +38,7 @@ Generate a complete ebook from the given topic.
 
 3. **Initialize new pipeline**:
    - Create `output/pipeline_state.json` per the schema in CLAUDE.md
+   - Set `author` field based on the parsed or user-provided author name
    - Set `bilingual` field based on user's choice
    - Ensure all output subdirectories exist
 

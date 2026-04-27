@@ -53,9 +53,7 @@
     <span class="t" id="tt">{{TITLE}}</span>
   </div>
   <div class="c">
-    <button id="bk" class="on" onclick="sw('primary')">{{PRIMARY_LABEL}}</button>
-    <button id="be" onclick="sw('secondary')">{{SECONDARY_LABEL}}</button>
-    <span style="color:#333">|</span>
+    {{LANGUAGE_TOGGLE}}
     <button onclick="zo(-1)">-</button>
     <span class="pg" id="pi">1 / 1</span>
     <button onclick="zo(1)">+</button>
@@ -95,7 +93,7 @@ document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowD
 let tx=0;document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;});document.addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(d<0?1:-1);});
 $('vw').addEventListener('click',e=>{if(e.target.closest('.arr'))return;const r=$('vw').getBoundingClientRect(),x=e.clientX-r.left;if(x<r.width*.15)go(-1);else if(x>r.width*.85)go(1);});
 window.zo=d=>{zm=Math.max(.5,Math.min(2.5,zm+d*.15));dr();};
-window.sw=l=>{lang=l;$('bk').classList.toggle('on',l==='primary');$('be').classList.toggle('on',l==='secondary');$('tt').textContent=T[l];init(l);};
+window.sw=l=>{lang=l;const bp=$('bk'),be=$('be');if(bp)bp.classList.toggle('on',l==='primary');if(be)be.classList.toggle('on',l==='secondary');$('tt').textContent=T[l];init(l);};
 addEventListener('resize',()=>{mob=innerWidth<=900;dr();});
 init('primary');
 </script>

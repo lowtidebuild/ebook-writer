@@ -45,7 +45,7 @@ The orchestrator reads each generated image and evaluates it against the style g
 
 ### Step 4: Insert Images (`insert_images.py`)
 
-Replaces every `[IMAGE: ...]` marker in the chapter files with either the generated image link or a failure placeholder.
+Replaces every `[IMAGE: ...]` marker in the chapter files with either the generated image link or a failure placeholder. Completed entries use the manifest's `output_path` directly, so provider-specific file extensions such as `.png` and `.svg` are preserved.
 
 ```bash
 python3 scripts/insert_images.py output/images/image_manifest.json output/chapters/ko/

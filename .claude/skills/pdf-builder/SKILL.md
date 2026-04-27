@@ -43,14 +43,16 @@ pip install weasyprint markdown pymdown-extensions Pygments
 ## Usage
 
 ```bash
-python3 scripts/build_pdf.py \
+.venv/bin/python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
   --chapters output/chapters/ko/ \
   --images output/images/ \
   --output output/final/book_ko.pdf \
   --language ko \
   --styles .claude/skills/pdf-builder/references/book_styles.css \
   --cover .claude/skills/pdf-builder/references/cover_template.html \
-  --title "Book Title"
+  --title "Book Title" \
+  --author "Author Name" \
+  --citations output/research/citations.json
 ```
 
 ### Arguments
@@ -65,7 +67,9 @@ python3 scripts/build_pdf.py \
 | `--cover`     | No       | Path to cover page HTML template                  |
 | `--title`     | Yes      | Book title injected into cover and metadata       |
 | `--subtitle`  | No       | Book subtitle for the cover page                  |
-| `--author`    | No       | Author name for the cover page                    |
+| `--author`    | Yes      | Author name for the cover/title/copyright pages   |
+| `--citations` | No       | Path to citations.json for bibliography generation |
+| `--generator-credit` | No | Optional generator credit on the copyright page |
 
 ## When to Use
 

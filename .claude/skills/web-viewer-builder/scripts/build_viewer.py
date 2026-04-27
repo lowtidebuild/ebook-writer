@@ -36,6 +36,28 @@ LANG_CONFIG = {
 }
 
 
+def build_language_toggle(primary_label: str, secondary_label: str, enabled: bool) -> str:
+    """Return the language toggle HTML, or nothing for single-language viewers."""
+    if not enabled:
+        return ""
+    return (
+        f'<button id="bk" class="on" onclick="sw(\'primary\')">{primary_label}</button>\n'
+        f'    <button id="be" onclick="sw(\'secondary\')">{secondary_label}</button>\n'
+        f'    <span style="color:#333">|</span>'
+    )
+
+
+def apply_template_replacements(html: str, replacements: dict[str, str]) -> str:
+    """Apply template replacements and fail if any {{PLACEHOLDER}} remains."""
+    for placeholder, value in replacements.items():
+        html = html.replace(placeholder, value)
+
+    remaining = sorted(set(re.findall(r"{{[^{}]+}}", html)))
+    if remaining:
+        raise ValueError(f"Unreplaced template placeholder(s): {', '.join(remaining)}")
+    return html
+
+
 def extract_toc(pdf_path: str) -> list[dict]:
     """Extract chapter start pages from a PDF using font-size detection.
 
@@ -121,13 +143,14 @@ def main():
     shutil.copy2(pdf_primary, out_dir / primary_pdf_name)
     print(f"Copied: {pdf_primary} -> {out_dir / primary_pdf_name}")
 
-    secondary_pdf_name = f"book_{args.secondary_lang}.pdf"
-    if args.pdf_secondary and Path(args.pdf_secondary).is_file():
+    has_secondary = bool(args.pdf_secondary and Path(args.pdf_secondary).is_file())
+    secondary_pdf_name = ""
+    if has_secondary:
+        secondary_pdf_name = f"book_{args.secondary_lang}.pdf"
         shutil.copy2(args.pdf_secondary, out_dir / secondary_pdf_name)
         print(f"Copied: {args.pdf_secondary} -> {out_dir / secondary_pdf_name}")
     else:
-        secondary_pdf_name = primary_pdf_name
-        print("No secondary PDF; both buttons will load the primary PDF.")
+        print("No secondary PDF; language toggle will be hidden.")
 
     # Extract TOC from both PDFs at build time
     print("Extracting TOC from primary PDF...")
@@ -135,7 +158,7 @@ def main():
     print(f"  Found {len(toc_primary)} chapters")
 
     toc_secondary = []
-    if args.pdf_secondary and Path(args.pdf_secondary).is_file():
+    if has_secondary:
         print("Extracting TOC from secondary PDF...")
         toc_secondary = extract_toc(args.pdf_secondary)
         print(f"  Found {len(toc_secondary)} chapters")
@@ -155,14 +178,21 @@ def main():
         "{{SECONDARY_PDF}}": secondary_pdf_name,
         "{{PRIMARY_LABEL}}": pl["label"],
         "{{SECONDARY_LABEL}}": sl["label"],
+        "{{LANGUAGE_TOGGLE}}": build_language_toggle(
+            pl["label"],
+            sl["label"],
+            has_secondary,
+        ),
         "{{PRIMARY_TOC_LABEL}}": pl["toc_label"],
         "{{SECONDARY_TOC_LABEL}}": sl["toc_label"],
         "{{TOC_PRIMARY}}": json.dumps(toc_primary, ensure_ascii=False),
         "{{TOC_SECONDARY}}": json.dumps(toc_secondary, ensure_ascii=False),
     }
 
-    for placeholder, value in replacements.items():
-        html = html.replace(placeholder, value)
+    try:
+        html = apply_template_replacements(html, replacements)
+    except ValueError as exc:
+        sys.exit(f"ERROR: {exc}")
 
     index_path = out_dir / "index.html"
     index_path.write_text(html, encoding="utf-8")

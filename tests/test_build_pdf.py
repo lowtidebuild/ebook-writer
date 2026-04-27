@@ -1,0 +1,156 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from helpers import load_module
+
+
+build_pdf = load_module(
+    "test_build_pdf_module",
+    ".claude/skills/pdf-builder/scripts/build_pdf.py",
+)
+
+
+def test_discover_chapters_sorts_files_numerically(tmp_path):
+    chapters_dir = tmp_path / "chapters"
+    chapters_dir.mkdir()
+    (chapters_dir / "ch10_last.md").write_text("# Chapter 10\n", encoding="utf-8")
+    (chapters_dir / "ch02_middle.md").write_text("# Chapter 2\n", encoding="utf-8")
+    (chapters_dir / "notes.md").write_text("ignore", encoding="utf-8")
+
+    chapter_paths = build_pdf.discover_chapters(str(chapters_dir))
+
+    assert [path.name for path in chapter_paths] == ["ch02_middle.md", "ch10_last.md"]
+
+
+def test_discover_chapters_exits_for_missing_or_empty_directory(tmp_path):
+    missing_dir = tmp_path / "missing"
+    with pytest.raises(SystemExit, match="does not exist"):
+        build_pdf.discover_chapters(str(missing_dir))
+
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    with pytest.raises(SystemExit, match="No chapter files"):
+        build_pdf.discover_chapters(str(empty_dir))
+
+
+def test_resolve_image_paths_prefers_images_directory(tmp_path):
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    image_path = images_dir / "diagram.png"
+    image_path.write_bytes(b"png")
+
+    html = '<p><img src="diagram.png"><img src="https://example.com/x.png"></p>'
+    resolved = build_pdf.resolve_image_paths(html, str(images_dir))
+
+    assert f'src="file://{image_path}"' in resolved
+    assert 'src="https://example.com/x.png"' in resolved
+
+
+def test_wrap_chapter_rewrites_h1_and_assigns_h2_ids():
+    chapter_html = (
+        "<h1>Intro <em>Title</em></h1>\n"
+        "<p>Opening paragraph.</p>\n"
+        "<h2>First section</h2>\n"
+        "<h2 id=\"keep-me\">Second section</h2>\n"
+    )
+
+    wrapped = build_pdf.wrap_chapter(chapter_html, 2)
+
+    assert '<span class="chapter-number">Chapter 2</span>' in wrapped
+    assert '<h1 class="chapter-title">Intro Title</h1>' in wrapped
+    assert '<h2 id="ch2-s1">First section</h2>' in wrapped
+    assert '<h2 id="keep-me">Second section</h2>' in wrapped
+    assert "Opening paragraph." in wrapped
+
+
+def test_wrap_chapter_uses_korean_chapter_label():
+    wrapped = build_pdf.wrap_chapter(
+        "<h1>소개</h1>\n<p>본문입니다.</p>",
+        3,
+        language="ko",
+    )
+
+    assert '<span class="chapter-number">제3장</span>' in wrapped
+    assert "Chapter 3" not in wrapped
+
+
+def test_wrap_chapter_fallback_title_uses_language_label():
+    wrapped = build_pdf.wrap_chapter("<p>No title.</p>", 4, language="ko")
+
+    assert '<h1 class="chapter-title">제4장</h1>' in wrapped
+
+
+def test_generate_toc_and_bibliography_include_expected_links_and_labels(tmp_path):
+    toc_html = build_pdf.generate_toc(
+        ["<h1>Intro</h1><h2>Basics</h2>", "<h1>Advanced</h1>"],
+        [1, 2],
+    )
+
+    citations_path = tmp_path / "citations.json"
+    citations_path.write_text(
+        json.dumps(
+            {
+                "citations": [
+                    {"id": 2, "author": "Jane", "title": "Spec", "url": "https://example.com", "accessed": "2026-03-30"},
+                    {"id": "1", "title": "Guide"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    bibliography_html = build_pdf.generate_bibliography(str(citations_path), "ko")
+
+    assert 'href="#ch1"' in toc_html
+    assert 'href="#ch1-s1"' in toc_html
+    assert "참고문헌" in bibliography_html
+    assert 'id="cite-1"' in bibliography_html
+    assert "접근일: 2026-03-30" in bibliography_html
+
+
+def test_render_cover_and_assemble_document_include_all_sections(tmp_path):
+    template_path = tmp_path / "cover.html"
+    template_path.write_text(
+        "<section>{{TITLE}} | {{SUBTITLE}} | {{AUTHOR}} | {{DATE}}</section>",
+        encoding="utf-8",
+    )
+
+    cover_html = build_pdf.render_cover(
+        str(template_path),
+        title="Book Title",
+        subtitle="Sub",
+        author="Author",
+        date_str="2026. 03. 30.",
+    )
+    title_page_html = build_pdf.render_title_page("Book Title", "Sub", "Author")
+    copyright_page_html = build_pdf.render_copyright_page("Author", "2026. 03. 30.")
+    document_html = build_pdf.assemble_document(
+        cover_html=cover_html,
+        title_page_html=title_page_html,
+        copyright_page_html=copyright_page_html,
+        toc_html="<div>TOC</div>",
+        chapter_sections=["<section>Chapter Body</section>"],
+        css_text="body { color: black; }",
+        title="Book Title",
+        language="en",
+        bibliography_html="<section>Bibliography</section>",
+    )
+
+    assert "Book Title | Sub | Author | 2026. 03. 30." in cover_html
+    assert '<html lang="en">' in document_html
+    assert "<div>TOC</div>" in document_html
+    assert "<section>Bibliography</section>" in document_html
+    assert "book-title-meta" in document_html
+    assert "Generated by Ebook Writer Agent" not in copyright_page_html
+
+
+def test_render_copyright_page_includes_optional_generator_credit():
+    copyright_page_html = build_pdf.render_copyright_page(
+        "Author",
+        "2026. 03. 30.",
+        generator_credit="Generated with Ebook Writer Agent",
+    )
+
+    assert "Generated with Ebook Writer Agent" in copyright_page_html

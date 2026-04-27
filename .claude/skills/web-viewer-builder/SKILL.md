@@ -31,7 +31,7 @@ python3 build_viewer.py \
 | Argument | Required | Description |
 |---|---|---|
 | `--pdf-primary` | Yes | Path to primary language PDF |
-| `--pdf-secondary` | No | Path to secondary language PDF (falls back to primary) |
+| `--pdf-secondary` | No | Path to secondary language PDF; omit for a single-language viewer |
 | `--output` | Yes | Output directory for the web viewer |
 | `--template` | Yes | Path to viewer_template.html |
 | `--title` | Yes | Book title (primary language) |
@@ -45,6 +45,7 @@ python3 build_viewer.py \
 2. **Build time**: Chapter-to-page mapping is extracted and embedded as JSON in the HTML
 3. **Runtime**: PDF.js loads and renders the PDF pages on canvas elements
 4. **Runtime**: Sidebar is populated instantly from the embedded JSON (no client-side scanning)
+5. **Single-language mode**: When `--pdf-secondary` is omitted or missing, the language toggle is hidden instead of pointing both buttons at the primary PDF
 
 ## Features
 

@@ -75,6 +75,7 @@ All state is tracked in `output/pipeline_state.json`. This file is the single so
 {
   "pipeline": "generate",
   "topic": "string",
+  "author": "string",
   "plugin": "string or null",
   "primary_language": "ko",
   "secondary_language": "en",
@@ -158,6 +159,7 @@ ELSE:
 ```
 Create output/pipeline_state.json with:
   topic = user-provided topic
+  author = user-provided author
   plugin = detected plugin or null
   started_at = now
   updated_at = now
@@ -370,25 +372,29 @@ This step uses dependency-wave-based parallel execution:
 
 1. Build primary language PDF:
    ```bash
-   python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
+   .venv/bin/python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
      --chapters output/chapters/{state.primary_language}/ \
      --images output/images/ \
      --output output/final/book_{state.primary_language}.pdf \
      --language {state.primary_language} \
      --styles .claude/skills/pdf-builder/references/book_styles.css \
      --cover .claude/skills/pdf-builder/references/cover_template.html \
-     --title "{book title from outline}"
+     --title "{book title from outline}" \
+     --author "{state.author}" \
+     --citations output/research/citations.json
    ```
 2. **If `state.bilingual` is `true`**, also build secondary language PDF:
    ```bash
-   python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
+   .venv/bin/python3 .claude/skills/pdf-builder/scripts/build_pdf.py \
      --chapters output/chapters/{state.secondary_language}/ \
      --images output/images/ \
      --output output/final/book_{state.secondary_language}.pdf \
      --language {state.secondary_language} \
      --styles .claude/skills/pdf-builder/references/book_styles.css \
      --cover .claude/skills/pdf-builder/references/cover_template.html \
-     --title "{book title from outline}"
+     --title "{book title from outline}" \
+     --author "{state.author}" \
+     --citations output/research/citations.json
    ```
 3. Verify PDF file(s) exist and have size > 10KB
 4. Update state: step_7.status = "completed", last_completed_step = 7

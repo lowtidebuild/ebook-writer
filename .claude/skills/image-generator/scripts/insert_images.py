@@ -11,6 +11,7 @@ Example:
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -21,17 +22,18 @@ def load_manifest(manifest_path: str) -> list[dict]:
         return json.load(f)
 
 
-def build_replacement(entry: dict, chapters_dir: str) -> str:
+def build_replacement(entry: dict, chapter_path: Path) -> str:
     """Return the markdown string that should replace the [IMAGE: ...] marker."""
     marker_id = entry["marker_id"]
     description = entry["description"]
     status = entry["status"]
 
     if status == "completed":
-        # Build a relative path from the chapter file to the image.
-        # Chapters live in chapters_dir; images live in a sibling "images" dir.
-        image_filename = f"{marker_id}.png"
-        relative_path = f"../images/{image_filename}"
+        # Trust the manifest output path so provider-specific extensions
+        # (for example .svg diagram output) are preserved.
+        output_path = entry.get("output_path") or str(Path("output/images") / f"{marker_id}.png")
+        relative_path = os.path.relpath(output_path, chapter_path.parent)
+        relative_path = relative_path.replace(os.sep, "/")
         return f"![{description}]({relative_path})"
     else:
         # Placeholder for failed or still-pending entries
@@ -74,7 +76,7 @@ def insert_images(manifest_path: str, chapters_dir: str) -> None:
             # Match the exact [IMAGE: description] marker
             pattern = re.compile(r"\[IMAGE:\s*" + escaped_desc + r"\s*\]")
 
-            replacement = build_replacement(entry, chapters_dir)
+            replacement = build_replacement(entry, chapter_path)
 
             new_content, count = pattern.subn(replacement, content, count=1)
             if count > 0:
