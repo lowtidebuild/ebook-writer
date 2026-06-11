@@ -18,7 +18,7 @@
       "Bash(tail .env*)"
     ],
     "additionalDirectories": [
-      "/Users/kpsfamily/.gstack/projects/lowtidebuild-ebook-writer",
+      "/Users/kpsfamily/.gstack/projects",
       "/Users/kpsfamily/코딩 프로젝트/ebook-writer/.claude/skills/image-generator/references"
     ]
   }
