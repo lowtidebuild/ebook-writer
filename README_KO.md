@@ -20,7 +20,6 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-22c55e?style=flat-square)](LICENSE)
 
 [**English**](README.md) ·
-[**결과물 보기**](https://lowtidebuild.github.io/ebook-writer/) ·
 [**빠른 시작**](#-빠른-시작)
 
 <br>
@@ -34,16 +33,6 @@
 ## 📖 결과물 예시
 
 > **"변호사를 위한 Claude Code 완전 정복"** — 13장, 250+ 페이지, 이 에이전트로 자동 생성.
-
-<div align="center">
-
-### [**온라인으로 읽기 &rarr;**](https://lowtidebuild.github.io/ebook-writer/)
-
-*PDF.js 뷰어 &bull; 2페이지 펼침 &bull; 챕터 사이드바 &bull; 한/영 전환*
-
-[**한국어 PDF 원본**](https://drive.google.com/file/d/1BfSJ9HRZkJq_Qrzl7S9X2nGAHxNncUlc/view?usp=sharing) · [**English PDF**](https://drive.google.com/file/d/1_zzj7sucZNPJC870FPDv0_O0YY1L8OGa/view?usp=sharing)
-
-</div>
 
 <br>
 
